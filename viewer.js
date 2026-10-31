@@ -4,6 +4,7 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { nativeGroup } from './viewer-rw.js';
+import { mountFollowers, worldMatrixOf, propagateMountedTransform } from './viewer-assemblies.js';
 
 const $=id=>document.getElementById(id);
 const stage=$('viewport'), scene=new THREE.Scene();scene.background=new THREE.Color('#101321');
@@ -19,9 +20,10 @@ floor.position.y=-.82;axes.visible=false;scene.add(floor,axes);
 const roots=new THREE.Group();scene.add(roots);
 const transform=new TransformControls(camera,renderer.domElement);scene.add(transform);
 transform.addEventListener('dragging-changed',e=>orbit.enabled=!e.value);
-transform.addEventListener('objectChange',()=>{if(selected)sync()});
+transform.addEventListener('objectChange',()=>{if(selected){syncMountedMotion();sync()}});
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 let rootModel=null,selected=null,partMeshes=[],startState=new Map(),textureMap=new Map(),kind='—',nativeMeta=null;
+let mountedFollowers=[],selectedPreviousWorld=null;
 let uploadedDFF=null, uploadedTXD=[],statusTimer=null,spinTimer=null,debounced=false;
 let glbSampleSkins=[];
 function updateNativePaint(){
@@ -48,7 +50,7 @@ function focusModel(){
 function originalOf(mesh){return {pos:mesh.position.clone(),rot:mesh.quaternion.clone(),scale:mesh.scale.clone(),visible:mesh.visible,matrix:mesh.matrix.clone()}}
 function selectable(o){return o.isMesh&&o.geometry?.attributes?.position?.count>0&&o.name&&!o.userData?.isEditorHelper}
 function setModel(group,source,meta=null,textureDictionary=new Map()){
- selected=null;transform.detach();if(source!=='GLB · podgląd kolorów')glbSampleSkins=[];
+ selected=null;mountedFollowers=[];selectedPreviousWorld=null;transform.detach();if(source!=='GLB · podgląd kolorów')glbSampleSkins=[];
  if(rootModel){roots.remove(rootModel);rootModel.traverse(o=>{if(o.geometry&&o.userData?.temporaryGeometry)o.geometry.dispose()})}
  rootModel=group;roots.add(rootModel);kind=source;nativeMeta=meta;textureMap=textureDictionary;
  renderer.localClippingEnabled=(source==='GLB · podgląd kolorów');
@@ -79,12 +81,19 @@ function renderParts(){const needle=$('partSearch').value.trim().toLowerCase(),t
  }
  if(!n)target.innerHTML='<p class="smallnote">Brak pasujących części.</p>';
 }
-function choose(mesh){selected=mesh;transform.detach();
+function syncMountedMotion(){
+ if(selected&&selectedPreviousWorld){
+   selectedPreviousWorld=propagateMountedTransform(selected,mountedFollowers,selectedPreviousWorld);
+ }
+}
+function choose(mesh){selected=mesh;transform.detach();mountedFollowers=[];selectedPreviousWorld=null;
  $('inspectEmpty').hidden=!!mesh;$('inspectFields').hidden=!mesh;
  if(!mesh){$('selectedBadge').textContent='Brak zaznaczenia';renderParts();return}
  if(!mesh.matrixAutoUpdate){mesh.matrix.decompose(mesh.position,mesh.quaternion,mesh.scale);mesh.matrixAutoUpdate=true;}
+ mountedFollowers=kind==='DFF + TXD'?mountFollowers(partMeshes,mesh):[];
+ selectedPreviousWorld=worldMatrixOf(mesh);
  $('selectedBadge').textContent=mesh.name;
- $('partTitle').textContent=mesh.name;
+ $('partTitle').textContent=mesh.name+(mountedFollowers.length?' · razem z oznaczeniami':'');
  $('partVisible').checked=mesh.visible;
  transform.attach(mesh);transform.setMode('translate');$('moveMode').classList.add('active');$('rotateMode').classList.remove('active');$('scaleMode').classList.remove('active');sync();renderParts();
 }
@@ -92,11 +101,19 @@ function sync(){if(!selected)return;for(const [id,x]of [['posX',selected.positio
 for(const id of ['posX','posY','posZ','rotY','scale'])$(id).addEventListener('change',()=>{
  if(!selected)return;const n=Number($(id).value);if(!Number.isFinite(n))return;
  if(id==='posX')selected.position.x=n;if(id==='posY')selected.position.y=n;if(id==='posZ')selected.position.z=n;
- if(id==='rotY')selected.rotation.y=THREE.MathUtils.degToRad(n);if(id==='scale'&&n>0&&n<50)selected.scale.setScalar(n);sync();
+ if(id==='rotY')selected.rotation.y=THREE.MathUtils.degToRad(n);if(id==='scale'&&n>0&&n<50)selected.scale.setScalar(n);syncMountedMotion();sync();
 });
 $('partVisible').onchange=e=>{if(selected){selected.visible=e.target.checked;renderParts()}};
 for(const [button,mode] of [['moveMode','translate'],['rotateMode','rotate'],['scaleMode','scale']])$(button).onclick=()=>{transform.setMode(mode);for(const id of ['moveMode','rotateMode','scaleMode'])$(id).classList.toggle('active',id===button)};
-$('resetPart').onclick=()=>{if(!selected)return;const o=startState.get(selected.uuid);selected.position.copy(o.pos);selected.quaternion.copy(o.rot);selected.scale.copy(o.scale);selected.visible=o.visible;selected.updateMatrix();sync();renderParts()};
+$('resetPart').onclick=()=>{if(!selected)return;
+ for(const part of [selected,...mountedFollowers]){
+  const o=startState.get(part.uuid);if(!o)continue;
+  part.position.copy(o.pos);part.quaternion.copy(o.rot);part.scale.copy(o.scale);
+  part.visible=o.visible;part.matrix.copy(o.matrix);
+  part.matrixAutoUpdate=false;part.matrixWorldNeedsUpdate=true;
+ }
+ if(!selected.matrixAutoUpdate){selected.matrix.decompose(selected.position,selected.quaternion,selected.scale);selected.matrixAutoUpdate=true;}
+ selectedPreviousWorld=worldMatrixOf(selected);sync();renderParts()};
 $('partSearch').oninput=renderParts;$('showAll').onclick=()=>{partMeshes.forEach(m=>m.visible=true);renderParts()};$('hideAll').onclick=()=>{partMeshes.forEach(m=>m.visible=false);renderParts()};
 for(const [id,fn] of [['grid',v=>floor.visible=v],['axes',v=>axes.visible=v],['rotate',v=>orbit.autoRotate=v],['wire',v=>partMeshes.forEach(m=>(Array.isArray(m.material)?m.material:[m.material]).forEach(x=>{x.wireframe=v}))],['lighting',v=>{hemi.intensity=v?Number($('ambient').value):2.4;sun.intensity=v?Number($('sun').value):0}]])$(id).onchange=e=>fn(e.target.checked);
 $('ambient').oninput=e=>hemi.intensity=Number(e.target.value);$('sun').oninput=e=>sun.intensity=Number(e.target.value);
