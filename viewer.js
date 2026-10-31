@@ -44,6 +44,7 @@ function setModel(group,source,meta=null,textureDictionary=new Map()){
  selected=null;transform.detach();if(source!=='GLB · podgląd kolorów')glbSampleSkins=[];
  if(rootModel){roots.remove(rootModel);rootModel.traverse(o=>{if(o.geometry&&o.userData?.temporaryGeometry)o.geometry.dispose()})}
  rootModel=group;roots.add(rootModel);kind=source;nativeMeta=meta;textureMap=textureDictionary;
+ renderer.localClippingEnabled=(source==='GLB · podgląd kolorów');
  partMeshes=[];startState.clear();group.traverse(o=>{if(selectable(o)){partMeshes.push(o);startState.set(o.uuid,originalOf(o))}});
  const totalV=partMeshes.reduce((n,x)=>n+x.geometry.attributes.position.count,0);
  const totalF=partMeshes.reduce((n,x)=>n+(x.geometry.index?x.geometry.index.count/3:x.geometry.attributes.position.count/3),0);
@@ -143,7 +144,7 @@ function frame(){requestAnimationFrame(frame);orbit.update();
 function normalizeLegacySultanSample(group){
   glbSampleSkins=[];
   const black=new THREE.MeshStandardMaterial({name:'LSPD · nadwozie (podgląd)',color:0x2b3239,roughness:.77,metalness:.08,side:THREE.DoubleSide});
-  const white=new THREE.MeshBasicMaterial({name:'LSPD · białe drzwi (GLB)',color:0xf0eee8,side:THREE.DoubleSide,depthTest:true,depthWrite:true,toneMapped:false});
+  const white=new THREE.MeshBasicMaterial({name:'LSPD · białe drzwi (GLB)',color:0xf0eee8,side:THREE.DoubleSide,depthTest:true,depthWrite:true,toneMapped:false,clippingPlanes:[new THREE.Plane(new THREE.Vector3(0,-1,0),0.06)]});
   const blackTrim=new THREE.MeshStandardMaterial({color:0x181c21,roughness:.96,side:THREE.DoubleSide});
   const glass=new THREE.MeshStandardMaterial({color:0x5b6570,roughness:.18,opacity:.65,transparent:true,side:THREE.DoubleSide});
   const chrome=new THREE.MeshStandardMaterial({color:0xa9afb3,roughness:.42,metalness:.45,side:THREE.DoubleSide});
