@@ -35,7 +35,8 @@ jobs:
           JS
       - name: Smoke test viewer in real Chromium
         run: |
-          npm install --no-save playwright@1.56.1
+          npm install --no-save playwright@1.56.1 three@0.161.0
+          node tests/native-materials.mjs
           npx playwright install --with-deps chromium
           python3 -m http.server 8765 >/tmp/mrp-viewer-http.log 2>&1 &
           node tests/viewer-smoke.mjs
