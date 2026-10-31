@@ -23,6 +23,7 @@ transform.addEventListener('objectChange',()=>{if(selected)sync()});
 const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 let rootModel=null,selected=null,partMeshes=[],startState=new Map(),textureMap=new Map(),kind='—',nativeMeta=null;
 let uploadedDFF=null, uploadedTXD=[],statusTimer=null,spinTimer=null,debounced=false;
+let glbSampleSkins=[];
 const formatSize=b=>b==null?'—':b>=1048576?(b/1048576).toFixed(1)+' MB':(b/1024).toFixed(0)+' KB';
 const escapeHTML=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;').replaceAll('>','&gt;');
 function status(s){$('state').textContent=s}
@@ -40,7 +41,7 @@ function focusModel(){
 function originalOf(mesh){return {pos:mesh.position.clone(),rot:mesh.quaternion.clone(),scale:mesh.scale.clone(),visible:mesh.visible,matrix:mesh.matrix.clone()}}
 function selectable(o){return o.isMesh&&o.geometry?.attributes?.position?.count>0&&o.name&&!o.userData?.isEditorHelper}
 function setModel(group,source,meta=null,textureDictionary=new Map()){
- selected=null;transform.detach();
+ selected=null;transform.detach();if(source!=='GLB · podgląd kolorów')glbSampleSkins=[];
  if(rootModel){roots.remove(rootModel);rootModel.traverse(o=>{if(o.geometry&&o.userData?.temporaryGeometry)o.geometry.dispose()})}
  rootModel=group;roots.add(rootModel);kind=source;nativeMeta=meta;textureMap=textureDictionary;
  partMeshes=[];startState.clear();group.traverse(o=>{if(selectable(o)){partMeshes.push(o);startState.set(o.uuid,originalOf(o))}});
@@ -125,7 +126,14 @@ renderer.domElement.addEventListener('pointerdown',e=>{
  const hit=ray.intersectObjects(partMeshes.filter(m=>m.visible),false);
  if(hit.length){choose(hit[0].object);document.querySelector('[data-tab="view"]').click()}
 });
-function frame(){requestAnimationFrame(frame);orbit.update();renderer.render(scene,camera)}frame();
+function frame(){requestAnimationFrame(frame);orbit.update();
+ if(glbSampleSkins.length){
+   const side=camera.position.x-orbit.target.x;
+   for(const {mesh,left} of glbSampleSkins){
+     mesh.visible=Math.abs(side)<.08?false:(left?side<0:side>0);
+   }
+ }
+ renderer.render(scene,camera)}frame();
 
 /**
  * Preview-only repair for the legacy GLB sample. It is NOT applied to imported
@@ -133,8 +141,9 @@ function frame(){requestAnimationFrame(frame);orbit.update();renderer.render(sce
  * The legacy GLB includes bad rim geometry and severely tinted remap materials.
  */
 function normalizeLegacySultanSample(group){
+  glbSampleSkins=[];
   const black=new THREE.MeshStandardMaterial({name:'LSPD · nadwozie (podgląd)',color:0x2b3239,roughness:.77,metalness:.08,side:THREE.DoubleSide});
-  const white=new THREE.MeshBasicMaterial({name:'LSPD · białe drzwi (GLB)',color:0xf0eee8,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});
+  const white=new THREE.MeshBasicMaterial({name:'LSPD · białe drzwi (GLB)',color:0xf0eee8,side:THREE.DoubleSide,depthTest:true,depthWrite:true,toneMapped:false});
   const blackTrim=new THREE.MeshStandardMaterial({color:0x181c21,roughness:.96,side:THREE.DoubleSide});
   const glass=new THREE.MeshStandardMaterial({color:0x5b6570,roughness:.18,opacity:.65,transparent:true,side:THREE.DoubleSide});
   const chrome=new THREE.MeshStandardMaterial({color:0xa9afb3,roughness:.42,metalness:.45,side:THREE.DoubleSide});
@@ -150,8 +159,10 @@ function normalizeLegacySultanSample(group){
       o.material=white;
       // Original converted police panels were buried within the exterior door.
       // Displace only the GLB example so both sides become visibly white.
-      o.position.x += /lspd_door_l/.test(n)?-.29:.29;
-      o.renderOrder=85;
+      const left=/lspd_door_l/.test(n);
+      o.position.x += left?-.31:.31;
+      o.renderOrder=10;
+      glbSampleSkins.push({mesh:o,left});
       o.frustumCulled=false;
       return;
     }
