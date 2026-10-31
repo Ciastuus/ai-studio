@@ -27,7 +27,12 @@
   <input class="filter" id="partSearch" type="search" placeholder="Szukaj części, np. door, wheel">
   <div class="part-list" id="partList" role="list"><p class="smallnote">Wczytaj model, aby zobaczyć hierarchię.</p></div>
  </section>
- <section class="panel"><div class="heading">WYŚWIETLANIE</div>
+ <section class="panel"><div class="heading">LAKIER GTA:SA</div>
+<label class="toggle"><span>Kolor pojazdu (remap)</span><input id="nativePaint" type="color" value="#242930" title="Wybierz kolor nadwozia"></label>
+<p class="smallnote" id="nativePaintInfo">GTA:SA w DFF używa zielonego koloru zastępczego. Viewer zastępuje go wybranym lakierem.</p>
+<p class="smallnote" id="nativeDiagnostics"></p>
+</section>
+<section class="panel"><div class="heading">WYŚWIETLANIE</div>
   <label class="toggle"><span>Siatka</span><input id="grid" type="checkbox" checked></label>
   <label class="toggle"><span>Oś pomocnicza</span><input id="axes" type="checkbox"></label>
   <label class="toggle"><span>Siatka trójkątów (wireframe)</span><input id="wire" type="checkbox"></label>
@@ -76,5 +81,5 @@
 </aside>
 </div>
 <footer class="foot">M-RP / RENDERWARE VIEWER · nieoficjalny, własny interfejs inspirowany typowymi narzędziami do modeli GTA:SA · biblioteka DFF-Loader MIT</footer>
-<script type="module" src="./viewer.js?v=1"></script>
+<script type="module" src="./viewer.js?v=20261031-native-remap-wheel"></script>
 </body></html>
