@@ -8,7 +8,7 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>
 </head>
 <body>
-<header><div><div class="eyebrow">M-RP / MODEL STUDIO</div><h1>Sultan LSPD <span>3D Editor · poprawka kolorów</span></h1><p>GTA:SA · Sultan 560 · model DFF V10 → GLB · podgląd edycyjny</p></div><span id="state" role="status">Uruchamianie…</span></header>
+<header><div><div class="eyebrow">M-RP / MODEL STUDIO</div><h1>Sultan LSPD <span>3D Editor · warstwa białych drzwi</span></h1><p>GTA:SA · Sultan 560 · model DFF V10 → GLB · podgląd edycyjny</p></div><span id="state" role="status">Uruchamianie…</span></header>
 <main>
 <section id="stage" aria-label="Interaktywny podgląd 3D Sultana">
   <div class="stage-top"><div class="modes"><button class="mode on" id="editMode">Edycja 3D</button><button class="mode" id="previewMode">Podgląd bez znaczników</button></div><div class="badge"><span class="dot"></span><span id="meshInfo">Model 3D</span></div></div>
@@ -20,7 +20,7 @@
   <div class="group"><h2>Ustawienie kamery</h2><div class="buttons" id="cameras"><button data-camera="left">Kierowca</button><button data-camera="right">Pasażer</button><button data-camera="front">Przód</button><button data-camera="rear">Tył</button><button data-camera="top">Góra</button><button data-camera="angle" class="chosen">3D pod kątem</button></div></div>
   <div class="group"><h2>Wybierz element</h2><div class="buttons" id="items"></div><p class="help">Każdy napis, herb i belka mają niezależną pozycję. Stronę pasażera można regulować osobno.</p></div>
   <div class="group"><h2 id="selectedName">LS · kierowca</h2><div class="measure"><label for="x">X</label><input type="number" id="x" step="0.01"><label for="y">Wysokość</label><input type="number" id="y" step="0.01"><label for="z">Wzdłuż</label><input type="number" id="z" step="0.01"><label for="scale">Rozmiar</label><input type="number" id="scale" min="0.1" max="3" step="0.05"><label for="angle">Obrót (°)</label><input type="number" id="angle" step="1"></div><div class="nudge"><button data-nudge="left">←</button><button data-nudge="up">↑</button><button data-nudge="down">↓</button><button data-nudge="right">→</button></div><p class="help">Strzałki przesuwają zaznaczony element o 1 cm. Wartości są w metrach modelu.</p><button id="reset" class="wide">Przywróć wybrany element</button></div>
-  <div class="group"><h2>Wygląd</h2><label class="swatch"><span>Nadwozie</span><input id="paint" type="color" value="#14191c"></label><label class="swatch"><span>Drzwi</span><input id="doorpaint" type="color" value="#eeece4"></label><button id="resetColors" class="wide" type="button">Przywróć kolory LSPD (czarny / biały)</button><label class="swatch"><span>Pokaż siatkę pomocniczą</span><input id="grid" type="checkbox" checked></label><p class="help">Kolory służą do podglądu. Eksport pozycji nie zmienia plików DFF/TXD.</p></div>
+  <div class="group"><h2>Wygląd</h2><label class="swatch"><span>Nadwozie</span><input id="paint" type="color" value="#242930"></label><label class="swatch"><span>Drzwi</span><input id="doorpaint" type="color" value="#efeee8"></label><button id="resetColors" class="wide" type="button">Przywróć kolory LSPD (czarny / biały)</button><label class="swatch"><span>Pokaż siatkę pomocniczą</span><input id="grid" type="checkbox" checked></label><p class="help">Kolory służą do podglądu. Eksport pozycji nie zmienia plików DFF/TXD.</p></div>
   <div class="group"><h2>Zapis ustawień</h2><button id="save" class="primary wide">Eksport JSON</button><button id="import" class="wide">Import JSON</button><input id="file" type="file" accept=".json,application/json" hidden><p class="help" id="savedNote">Możesz wrócić do zapisanych ustawień w tej przeglądarce.</p></div>
 </aside>
 </main>
@@ -32,5 +32,5 @@
   window.addEventListener('unhandledrejection',function(e){fail('Błąd biblioteki 3D lub połączenia: '+(e.reason?.message||e.reason))});
   setTimeout(function(){if(!window.__MRP_READY)fail('Model nie został wczytany. Sprawdź internet, bibliotekę Three.js oraz plik assets/sultan_lspd_v10.glb.')},25000);
 })();
-</script><script type="module" src="./studio.js?v=20261031-white-doors-v3"></script>
+</script><script type="module" src="./studio.js?v=20261031-unlit-white-overlay-v4"></script>
 </body></html>
