@@ -1,0 +1,27 @@
+import * as THREE from 'three';
+import { mountFollowers, worldMatrixOf, propagateMountedTransform } from '../viewer-assemblies.js';
+
+const scene=new THREE.Group();
+const names=['bonnet_ok','lspd_hood','bonnet_dam','boot_ok','lspd_trunk','boot_dam','chassis'];
+const parts=names.map((name,i)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(.4,.3,.25),new THREE.MeshStandardMaterial());
+ m.name=name+' ['+i+']';m.userData.originalName=name;scene.add(m);m.position.set(i%2,0,0);
+ m.updateMatrix();m.updateWorldMatrix(true,false);return m});
+const [bonnet,hood,bonnetDam,boot,trunk,bootDam,chassis]=parts;
+let followers=mountFollowers(parts,bonnet);
+if(followers.length!==2||!followers.includes(hood)||!followers.includes(bonnetDam))throw Error('Bonnet does not link police decal and damage');
+if(mountFollowers(parts,hood).length)throw Error('POLICE lettering must remain independently editable');
+let before=worldMatrixOf(bonnet);const hoodOrigin=worldMatrixOf(hood).elements[12];
+const chassisOrigin=worldMatrixOf(chassis).elements[12];bonnet.position.set(2,0,0);
+bonnet.updateMatrix();before=propagateMountedTransform(bonnet,followers,before);
+if(Math.abs(hood.matrixWorld.elements[12]-0)>1e-10)hood.updateWorldMatrix(true,false);
+if(Math.abs(hood.matrixWorld.elements[12]-(hoodOrigin+2))>1e-7)throw Error('POLICE did not follow bonnet translation');
+if(Math.abs(chassis.matrixWorld.elements[12]-chassisOrigin)>1e-9)throw Error('Chassis unexpectedly moved');
+bonnet.rotation.z=Math.PI/5;bonnet.updateMatrix();
+before=propagateMountedTransform(bonnet,followers,before);
+bonnet.updateWorldMatrix(true,false);hood.updateWorldMatrix(true,false);
+const worldPivot=new THREE.Vector3().setFromMatrixPosition(bonnet.matrixWorld);
+const word=new THREE.Vector3().setFromMatrixPosition(hood.matrixWorld);
+if(!Number.isFinite(word.x)||word.distanceTo(worldPivot)>3)throw Error('POLICE rotated incorrectly');
+const back=mountFollowers(parts,boot);
+if(!back.includes(trunk)||!back.includes(bootDam))throw Error('Boot does not link trunk label and damage');
+console.log('PASS: moving bonnet moves POLICE and damaged variant; other parts unchanged; trunk linked; label independently editable');
