@@ -25,13 +25,14 @@ const fs=require('fs');
     const c=document.createElement('canvas');c.width=cv.width;c.height=cv.height;
     const ctx=c.getContext('2d');ctx.drawImage(cv,0,0);
     const {data}=ctx.getImageData(0,0,c.width,c.height);
-    let white=0,green=0;
+    let white=0,green=0,magenta=0;
     for(let i=0;i<data.length;i+=4){
       const [r,g,b]=[data[i],data[i+1],data[i+2]];
       if(r>190&&g>188&&b>178&&Math.max(r,g,b)-Math.min(r,g,b)<46)white++;
       if(g>150&&g>r*1.45&&g>b*1.45)green++;
+      if(r>140&&b>110&&r>g*1.6&&b>g*1.4)magenta++;
     }
-    return {white,green,width:c.width,height:c.height};
+    return {white,green,magenta,width:c.width,height:c.height};
   });
   for(const view of views){
     await page.locator('[data-camera="'+view+'"]').click();
@@ -48,11 +49,18 @@ const fs=require('fs');
   await page.waitForTimeout(600);
   stats.reset=await countPixels();
   await page.screenshot({path:'artifacts/studio-reset.png'});
+  await page.locator('#paint').fill('#ff00ff');
+  await page.waitForTimeout(800);
+  stats.bodyMagenta=await countPixels();
+  await page.screenshot({path:'artifacts/studio-body-magenta.png'});
+  await page.locator('#resetColors').click();
+  await page.waitForTimeout(500);
   fs.writeFileSync('artifacts/browser-results.json',JSON.stringify({stats,errors},null,2));
   console.log('BROWSER_RENDER_RESULTS='+JSON.stringify({stats,errors}));
   await browser.close();
   if(errors.length)throw Error('Browser JS errors: '+errors.join(' | '));
   if(stats.left.white<800||stats.right.white<800||stats.angle.white<800)throw Error('Police doors not visibly white on all 3 camera angles');
   if(changed.green<800)throw Error('Door color picker does not visibly change surface');
+  if(stats.bodyMagenta.magenta<300)throw Error('Body color picker does not visibly change dark car surface');
   console.log('PASS: browser loaded model, both doors are white, picker changes to green, reset returns white');
 })().catch(e=>{console.error('FAILED_BROWSER_CHECK',e);process.exit(1)});
