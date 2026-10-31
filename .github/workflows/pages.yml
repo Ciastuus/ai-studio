@@ -18,6 +18,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Validate browser editor and native exporter JavaScript
+        run: |
+          node --check studio.js
+          node --check native-export.js
+          node --input-type=module <<'JS'
+          import { zipStore, encodeDXT3 } from './native-export.js';
+          const data=new Uint8Array(4*4*4).fill(255);
+          const texture=encodeDXT3(data,4,4);
+          if(texture.length!==16) throw Error('DXT3 failed');
+          const archive=zipStore([['test.txt','M-RP']]);
+          if(archive.length<100)throw Error('ZIP writer failed');
+          JS
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
