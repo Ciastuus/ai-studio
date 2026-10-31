@@ -44,3 +44,8 @@ Otwórz **[RenderWare Viewer](https://ciastuus.github.io/ai-studio/viewer.html)*
 Eksport wymaga źródłowego DFF i TXD. Jeśli wczytasz wyłącznie przykładowy GLB, eksport natywny wyświetli wyjaśnienie, a nie będzie udawał konwersji GLB → DFF. Wypalenie warstw wymaga tekstury `mrplspddoors512` w TXD. Oryginalne modyfikacje białych drzwi i aktualnego lakieru w skrypcie serwerowym pozostają; barwa lakieru wymaga `setVehicleColor` w Lua. Zwykła zmiana widoczności części w viewerze nie jest zapisywana w DFF.
 
 Testy binarnych DFF, DXT3 i przeglądarkowego przeciągania warstw są uruchamiane w GitHub Actions. Test w kliencie MTA:SA nadal jest potrzebny.
+
+
+## Napisy POLICE przytwierdzone do maski i bagażnika (V11.6)
+
+Od wersji 11.6 eksport natywnego DFF automatycznie naprawia hierarchię RenderWare: `lspd_hood` staje się dzieckiem `bonnet_ok`, a `lspd_trunk` dzieckiem `boot_ok`, zachowując bieżące położenie napisów. Dzięki temu zmiana transformacji właściwego panelu auta obejmuje napis. Dotyczy również importowanych starszych DFF z oznaczeniami jako rodzeństwem paneli. Test testuje obrót obu paneli w hierarchii, nie zastępuje jednak weryfikacji animacji i stanów uszkodzeń w MTA:SA.
