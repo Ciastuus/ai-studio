@@ -7,7 +7,7 @@
 </head><body>
 <header class="topbar">
  <div class="branding"><div class="brand">M-RP</div><div class="brand-description"><b>RenderWare Viewer</b><small>Model Studio / GTA San Andreas</small></div></div>
- <nav class="tabs" aria-label="Zakładki"><button class="tab active" data-tab="view">Widok</button><button class="tab" data-tab="model">Model</button><button class="tab" data-tab="textures">Tekstury</button><button class="tab" data-tab="export">Eksport</button></nav>
+ <nav class="tabs" aria-label="Zakładki"><button class="tab active" data-tab="view">Widok</button><button class="tab" data-tab="model">Model</button><button class="tab" data-tab="textures">Tekstury</button><button class="tab" data-tab="decals">Oznaczenia</button><button class="tab" data-tab="export">Eksport</button></nav>
  <div class="topright"><span class="status-dot"></span><span id="state">Uruchamianie</span><a class="go-studio" href="./index.html">Edytor LSPD <span aria-hidden="true">↗</span></a></div>
 </header>
 <div class="layout">
@@ -71,13 +71,25 @@
   <p class="info">Wczytaj plik TXD, aby podejrzeć wszystkie tekstury. Wymagane tekstury vehicle.txd dodaj razem z modelem.</p>
   <div id="textureList" class="texture-list"><p class="smallnote">Brak tekstur.</p></div><div id="textureDetails" class="info"></div>
  </section>
+ <section id="tab-decals" class="tab-panel">
+ <div class="heading">OSOBNE OZNACZENIA LSPD</div>
+ <p class="info">Ruszaj samymi napisami LS, PD i herbami. Białe drzwi pozostają nieruchome. Edycja jest widoczna na modelu i zapisywana do TXD przy eksporcie.</p>
+ <div id="decalControls" hidden>
+  <label class="field">Warstwa <select id="decalSelect" class="filter"></select></label>
+  <canvas id="decalAtlas" width="512" height="512" style="width:100%;height:auto;aspect-ratio:1;border:1px solid #434e67;border-radius:8px;touch-action:none;cursor:grab;background:#eee"></canvas>
+  <label class="field">Skala <input type="number" id="decalScale" min="0.25" max="2" step="0.05" value="1"></label>
+  <label class="field">Obrót (°) <input type="number" id="decalRotation" min="-180" max="180" step="1" value="0"></label>
+  <button id="decalReset" class="block secondary">Przywróć oryginalne pozycje</button>
+ </div>
+ <p class="info" id="decalHelp">Wczytaj Sultan LSPD DFF i TXD zawierające atlas mrplspddoors512, aby edytować napisy.</p>
+ </section>
  <section id="tab-export" class="tab-panel"><div class="heading">EKSPORT / NARZĘDZIA</div>
   <button id="savePNG" class="block secondary">Zapisz obraz PNG</button><button id="saveGLB" class="block secondary">Wyeksportuj podgląd GLB</button>
   <button id="saveJSON" class="block secondary">Zapisz transformacje JSON</button>
   <div class="heading smallheading">GOTOWY MODEL DO MTA:SA</div>
   <button id="saveNative" class="block primary" disabled>Eksportuj gotowy DFF + TXD (ZIP)</button>
   <p id="nativeSaveStatus" class="info" role="status">Wczytaj pliki .dff i .txd, ustaw części w podglądzie i wyeksportuj gotowy zestaw.</p>
-  <p class="smallnote">Zapisuje pozycję, obrót i skalę części bezpośrednio w DFF, dołącza oryginalne TXD. Ukrywanie części i edycja kolorów w podglądzie nie zmieniają TXD. Lakier wymaga ustawienia przez Lua.</p>
+  <p class="smallnote">Zapisuje pozycje części w DFF i przesunięcia LS, herbów, PD w przebudowanym TXD. Ukrywanie części oraz kolor lakieru nie są zapisywane do plików. Lakier wymaga ustawienia przez Lua.</p>
   <p class="info">GLB i JSON służą do podglądu oraz przenoszenia ustawień. Opcja DFF + TXD zapisuje natywne pliki RenderWare.</p>
   <a class="export-link" href="./index.html">Otwórz edytor LSPD z eksportem DFF/TXD ↗</a>
   <p class="smallnote">Eksporter DFF/TXD w edytorze LSPD obsługuje konkretny model V10, nie dowolny DFF.</p>
@@ -85,5 +97,5 @@
 </aside>
 </div>
 <footer class="foot">M-RP / RENDERWARE VIEWER · nieoficjalny, własny interfejs inspirowany typowymi narzędziami do modeli GTA:SA · biblioteka DFF-Loader MIT</footer>
-<script type="module" src="./viewer.js?v=20261031-native-binary-export"></script>
+<script type="module" src="./viewer.js?v=20261031-independent-decals"></script>
 </body></html>
