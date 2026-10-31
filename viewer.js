@@ -172,8 +172,8 @@ function normalizeLegacySultanSample(group){
     // Remove toxic baked vertex color multipliers from remaining GLB surfaces.
     const materials=Array.isArray(o.material)?o.material:[o.material];
     if(materials.some(m=>m?.vertexColors)){
-      o.material=materials.map(m=>{const c=m.clone();c.vertexColors=false;return c});
-      if(!Array.isArray(o.material)&&materials.length===1)o.material=o.material[0];
+      const corrected=materials.map(m=>{const c=m.clone();c.vertexColors=false;return c});
+      o.material=Array.isArray(o.material)?corrected:corrected[0];
     }
   });
   // Restore visible tyre + alloy silhouette independently of broken GLB wheel mesh.
