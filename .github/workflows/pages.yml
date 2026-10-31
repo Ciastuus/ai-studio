@@ -25,6 +25,7 @@ jobs:
           node --check viewer.js
           node --check viewer-rw.js
           node --check viewer-assemblies.js
+          node --check viewer-native-export.js
           node --check vendor/dff-loader.es.js
           node --input-type=module <<'JS'
           import { zipStore, encodeDXT3 } from './native-export.js';
@@ -39,6 +40,7 @@ jobs:
           npm install --no-save playwright@1.56.1 three@0.161.0
           node tests/native-materials.mjs
           node tests/panel-decal-follow.mjs
+          node tests/viewer-native-export.mjs
           npx playwright install --with-deps chromium
           python3 -m http.server 8765 >/tmp/mrp-viewer-http.log 2>&1 &
           node tests/viewer-smoke.mjs
