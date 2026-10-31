@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="pl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#10131f"><title>M-RP — RenderWare Model Viewer</title>
+<link rel="stylesheet" href="./viewer.css?v=4">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>
+</head><body>
+<header class="topbar">
+ <div class="branding"><div class="brand">M-RP</div><div class="brand-description"><b>RenderWare Viewer</b><small>Model Studio / GTA San Andreas</small></div></div>
+ <nav class="tabs" aria-label="Zakładki"><button class="tab active" data-tab="view">Widok</button><button class="tab" data-tab="model">Model</button><button class="tab" data-tab="textures">Tekstury</button><button class="tab" data-tab="export">Eksport</button></nav>
+ <div class="topright"><span class="status-dot"></span><span id="state">Uruchamianie</span><a class="go-studio" href="./index.html">Edytor LSPD <span aria-hidden="true">↗</span></a></div>
+</header>
+<div class="layout">
+<aside class="left-pane">
+ <section class="panel"><div class="heading">PLIKI <span id="fileType" class="tiny">DFF / TXD</span></div>
+  <label id="drop" class="dropzone" for="filePicker"><span class="drop-icon">↑</span><strong>Wczytaj DFF / TXD</strong><small>Kliknij lub przeciągnij pliki. Możesz dodać również vehicle.txd.</small></label>
+  <input id="filePicker" type="file" multiple accept=".dff,.txd,.glb,.gltf" hidden>
+  <div class="file-line"><span class="mini-dot blue"></span><span id="dffName">Nie wybrano DFF</span><small id="dffSize">—</small></div>
+  <div class="file-line"><span class="mini-dot green"></span><span id="txdName">Nie wybrano TXD</span><small id="txdSize">—</small></div>
+  <button id="loadSample" class="secondary block">Załaduj podgląd Sultana GLB</button>
+  <p class="smallnote">Przykład GLB to wcześniejszy model M-RP. Aby sprawdzić rzeczywiste materiały i części, wybierz własny DFF oraz TXD.</p>
+ </section>
+ <section class="panel"><div class="heading">MODEL</div>
+  <div class="stat-grid"><div><b id="verts">—</b><small>WIERZCHOŁKI</small></div><div><b id="tris">—</b><small>TRÓJKĄTY</small></div><div><b id="mats">—</b><small>MATERIAŁY</small></div><div><b id="partsCount">—</b><small>CZĘŚCI</small></div></div>
+ </section>
+ <section class="panel parts-panel"><div class="heading">CZĘŚCI <span class="heading-actions"><button id="showAll">Wszystkie</button><button id="hideAll">Żadne</button></span></div>
+  <input class="filter" id="partSearch" type="search" placeholder="Szukaj części, np. door, wheel">
+  <div class="part-list" id="partList" role="list"><p class="smallnote">Wczytaj model, aby zobaczyć hierarchię.</p></div>
+ </section>
+ <section class="panel"><div class="heading">WYŚWIETLANIE</div>
+  <label class="toggle"><span>Siatka</span><input id="grid" type="checkbox" checked></label>
+  <label class="toggle"><span>Oś pomocnicza</span><input id="axes" type="checkbox"></label>
+  <label class="toggle"><span>Siatka trójkątów (wireframe)</span><input id="wire" type="checkbox"></label>
+  <label class="toggle"><span>Autoobracanie</span><input id="rotate" type="checkbox"></label>
+  <label class="toggle"><span>Cieniowanie materiałów</span><input id="lighting" type="checkbox" checked></label>
+  <label class="toggle"><span>Jasność sceny</span><input type="range" id="ambient" min=".3" max="4" value="1.6" step=".1"></label>
+  <label class="toggle"><span>Światło główne</span><input type="range" id="sun" min="0" max="5" value="2" step=".1"></label>
+ </section>
+</aside>
+<main class="main">
+ <div id="viewport" aria-label="Interaktywny podgląd modelu 3D"></div>
+ <div class="viewport-top"><span class="chip" id="viewMode">PERSPEKTYWA · MODEL</span><span class="chip" id="selectedBadge">Brak zaznaczenia</span></div>
+ <div id="loading" class="loading"><div class="spinner"></div><b id="loadingTitle">Przygotowywanie widoku 3D</b><small id="loadingMessage">Wczytywanie biblioteki renderującej…</small><button id="retry" hidden>Spróbuj ponownie</button></div>
+ <div id="toast" class="toast" hidden role="status"></div>
+ <div class="viewport-bottom"><div class="viewcams"><button data-camera="left">Lewy bok</button><button data-camera="right">Prawy bok</button><button data-camera="front">Przód</button><button data-camera="rear">Tył</button><button data-camera="top">Góra</button><button data-camera="angle">3D</button></div><div class="viewhelp">LPM: obrót · kółko: zoom · PPM: kamera · kliknij część, aby ją wybrać</div></div>
+</main>
+<aside class="right-pane">
+ <section id="tab-view" class="tab-panel active"><div class="heading">INSPEKTOR MODELU</div><p class="info">Zaznacz część po lewej lub kliknij ją na modelu.</p>
+  <div id="inspectEmpty" class="empty">Nie wybrano części.</div>
+  <div id="inspectFields" hidden>
+   <div class="selected-title" id="partTitle">—</div>
+   <label class="toggle"><span>Widoczność</span><input type="checkbox" id="partVisible" checked></label>
+   <div class="heading smallheading">TRANSFORMACJA (PODGLĄD)</div>
+   <label class="field">Pozycja X <input id="posX" type="number" step="0.01"></label><label class="field">Pozycja Y <input id="posY" type="number" step="0.01"></label><label class="field">Pozycja Z <input id="posZ" type="number" step="0.01"></label>
+   <label class="field">Obrót Y (°) <input id="rotY" type="number" step="1"></label>
+   <label class="field">Skala <input id="scale" type="number" min=".1" max="5" step=".05"></label>
+   <div class="button-row"><button id="moveMode" class="active">Przesuń</button><button id="rotateMode">Obróć</button><button id="scaleMode">Skaluj</button></div><button id="resetPart" class="block secondary">Resetuj część</button>
+   <p class="smallnote">Transformacje części zapisują się do pliku JSON. Eksport natywnego DFF z dowolnymi transformacjami nie jest jeszcze obsługiwany.</p>
+  </div>
+ </section>
+ <section id="tab-model" class="tab-panel"><div class="heading">INFORMACJE RENDERWARE</div>
+  <div class="detailrow"><span>Źródło</span><b id="sourceKind">—</b></div><div class="detailrow"><span>Format</span><b id="rwFormat">—</b></div><div class="detailrow"><span>Materiały</span><b id="materialCount">—</b></div>
+  <div class="heading smallheading">MATERIAŁY</div><div id="materialList" class="material-list"><p class="info">Wczytaj model.</p></div>
+ </section>
+ <section id="tab-textures" class="tab-panel"><div class="heading">SŁOWNIK TXD</div>
+  <p class="info">Wczytaj plik TXD, aby podejrzeć wszystkie tekstury. Wymagane tekstury vehicle.txd dodaj razem z modelem.</p>
+  <div id="textureList" class="texture-list"><p class="smallnote">Brak tekstur.</p></div><div id="textureDetails" class="info"></div>
+ </section>
+ <section id="tab-export" class="tab-panel"><div class="heading">EKSPORT / NARZĘDZIA</div>
+  <button id="savePNG" class="block secondary">Zapisz obraz PNG</button><button id="saveGLB" class="block secondary">Wyeksportuj podgląd GLB</button>
+  <button id="saveJSON" class="block secondary">Zapisz transformacje JSON</button>
+  <p class="info">GLB jest eksportem podglądu 3D, a JSON zachowuje zmiany w tej przeglądarce. Te pliki nie zastępują DFF/TXD.</p>
+  <a class="export-link" href="./index.html">Otwórz edytor LSPD z eksportem DFF/TXD ↗</a>
+  <p class="smallnote">Eksporter DFF/TXD w edytorze LSPD obsługuje konkretny model V10, nie dowolny DFF.</p>
+ </section>
+</aside>
+</div>
+<footer class="foot">M-RP / RENDERWARE VIEWER · nieoficjalny, własny interfejs inspirowany typowymi narzędziami do modeli GTA:SA · biblioteka DFF-Loader MIT</footer>
+<script type="module" src="./viewer.js?v=1"></script>
+</body></html>
