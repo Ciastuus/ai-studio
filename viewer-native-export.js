@@ -53,6 +53,52 @@ export function removeAtomicChunksDFF(input, atomicIndices) {
   return {dff:out.buffer,removed};
 }
 
+
+/**
+ * GTA:SA bonnet/boot animations move bonnet_ok/boot_ok model frames.
+ * A POLICE decal attached as a *sibling* under bonnet_dummy/boot_dummy can
+ * stay in place when the body panel animates or deforms. Reparent the label
+ * underneath the actual animated panel, preserving its absolute placement.
+ *
+ * Runs after edited transforms are written. Other DFF structures and TXD are
+ * untouched; compatible with both older (sibling) and already-fixed files.
+ */
+export function attachPoliceDecalsToPanels(source) {
+ if(!(source instanceof ArrayBuffer))throw Error('Niepoprawny bufor DFF');
+ const info=getRWInfo(source),byName=new Map();
+ info.frames.forEach((f,i)=>byName.set(f.name.toLowerCase(),i));
+ const rules=[['lspd_hood','bonnet_ok'],['lspd_trunk','boot_ok']];
+ const work=source.slice(0),dv=new DataView(work),applied=[];
+ const cache=new Map(),visiting=new Set();
+ function worldOf(id){
+   if(cache.has(id))return cache.get(id);
+   if(visiting.has(id))throw Error('Cykl w hierarchii ramek DFF');
+   visiting.add(id);
+   const f=info.frames[id],local=f.m;
+   const out=f.parent>=0?worldOf(f.parent).clone().multiply(local):local.clone();
+   visiting.delete(id);cache.set(id,out);return out;
+ }
+ for(const [decName,parentName] of rules){
+   const dec=byName.get(decName),parent=byName.get(parentName);
+   if(dec===undefined||parent===undefined)continue; // other vehicles
+   const frame=info.frames[dec];
+   if(frame.parent===parent)continue;
+   if(dec===parent)throw Error('Niedozwolony cykl ramki '+decName);
+   // Resolve both original global transforms before editing either parent.
+   const wantedWorld=worldOf(dec),newParentWorld=worldOf(parent);
+   const relative=newParentWorld.clone().invert().multiply(wantedWorld);
+   if(!relative.elements.every(Number.isFinite))throw Error('Niepoprawna transformacja '+decName);
+   const off=frame.rwOffset;
+   if(!Number.isInteger(off)||off<0||off+56>work.byteLength)throw Error('Niepoprawna pozycja ramki '+decName);
+   const e=relative.elements,rot=[e[0],e[1],e[2],e[4],e[5],e[6],e[8],e[9],e[10]];
+   for(let j=0;j<9;j++)dv.setFloat32(off+j*4,rot[j],true);
+   for(let j=0;j<3;j++)dv.setFloat32(off+36+j*4,e[12+j],true);
+   dv.setInt32(off+48,parent,true);
+   applied.push({decal:decName,parent:parentName});
+ }
+ return {dff:applied.length?work:source,attached:applied};
+}
+
 /** Write edited component transforms to the real DFF RenderWare FrameList. */
 export function exportEditedDFF(originalDFF, parts, initialStates, removedAtomicIndices=[]) {
   if (!(originalDFF instanceof ArrayBuffer)) throw Error('Potrzebny jest bazowy plik DFF.');
@@ -100,8 +146,9 @@ export function exportEditedDFF(originalDFF, parts, initialStates, removedAtomic
     for(let j=0;j<9;j++)view.setFloat32(off+4*j,rotation[j],true);
     for(let j=0;j<3;j++)view.setFloat32(off+36+j*4,e[12+j],true);
   }
-  const filtered=removeAtomicChunksDFF(saved,removedAtomicIndices);
-  return {dff:filtered.dff,removedAtomics:filtered.removed,changedFrames:changes.size,changedNames:[...new Set(names)],omitted:skipped};
+  const attached=attachPoliceDecalsToPanels(saved);
+  const filtered=removeAtomicChunksDFF(attached.dff,removedAtomicIndices);
+  return {dff:filtered.dff,attachedDecals:attached.attached,removedAtomics:filtered.removed,changedFrames:changes.size,changedNames:[...new Set(names)],omitted:skipped};
 }
 
 export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sultan_lspd.dff',doorAtlas=null,removedAtomicIndices=[]}){
@@ -131,6 +178,7 @@ export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sulta
   const summary='M-RP DFF / TXD - eksport z RenderWare Viewer\r\n\r\n'
    +'Zmodyfikowane ramki DFF: '+built.changedFrames+'\r\n'
    +'Trwale usuniete atomiki DFF: '+built.removedAtomics+'\r\n'
+   +'Przypiete POLICE do bonnet_ok/boot_ok: '+built.attachedDecals.map(x=>x.decal).join(', ')+'\r\n'
    +'Zmodyfikowane czesci: '+(built.changedNames.join(', ')||'brak zmian')+'\r\n'
    +'TXD: '+(editedTXD?'nowe LS, herby i PD wypalone w DXT3.':'oryginalne tekstury bez zmian.')+'\r\n'
    +'Lakier GTA:SA to dynamiczny remap. Kolor ustaw w Lua:\r\n'
@@ -141,6 +189,6 @@ export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sulta
    +'nie zmieniaja DFF/TXD. vehicle.txd jest w optional/ i nie powinien zastepowac '
    +'pliku wspoldzielonego przez GTA. Przetestuj model w MTA:SA przed wdrozeniem.\r\n';
   files.push(['README.txt',summary]);
-  files.push(['model-edits.json',JSON.stringify({format:'MRP-Viewer-NativeExport-v1',paint:paintHex,modified:built.changedNames,skippedVisibility:built.omitted,removedAtomicIndices:[...removedAtomicIndices],editedTXD,decals:doorAtlas?.state||[]},null,2)]);
+  files.push(['model-edits.json',JSON.stringify({format:'MRP-Viewer-NativeExport-v1',paint:paintHex,modified:built.changedNames,skippedVisibility:built.omitted,attachedDecals:built.attachedDecals,removedAtomicIndices:[...removedAtomicIndices],editedTXD,decals:doorAtlas?.state||[]},null,2)]);
   return {zip:zipStore(files),report:{...built,editedTXD}};
 }
