@@ -28,6 +28,10 @@ let rootModel=null,selected=null,partMeshes=[],startState=new Map(),textureMap=n
 let mountedFollowers=[],selectedPreviousWorld=null;
 let uploadedDFF=null, uploadedTXD=[],statusTimer=null,spinTimer=null,debounced=false;
 let glbSampleSkins=[],decalEditor=null;
+const removedAtomicIndices=new Set();
+const helperLightNames=new Set(['lspd_bar_red','lspd_bar_blue','lspd_grill_red','lspd_grill_blue']);
+const atomicOf=mesh=>mesh?.userData?.atomicIndex;
+const isRemoved=mesh=>removedAtomicIndices.has(atomicOf(mesh));
 function updateNativePaint(){
  if(!rootModel)return;
  const paints=rootModel.userData?.paintMaterials||[];
@@ -52,7 +56,7 @@ function focusModel(){
 function originalOf(mesh){return {pos:mesh.position.clone(),rot:mesh.quaternion.clone(),scale:mesh.scale.clone(),visible:mesh.visible,matrix:mesh.matrix.clone()}}
 function selectable(o){return o.isMesh&&o.geometry?.attributes?.position?.count>0&&o.name&&!o.userData?.isEditorHelper}
 function setModel(group,source,meta=null,textureDictionary=new Map()){
- selected=null;mountedFollowers=[];selectedPreviousWorld=null;transform.detach();if(source!=='GLB · podgląd kolorów')glbSampleSkins=[];
+ selected=null;mountedFollowers=[];selectedPreviousWorld=null;removedAtomicIndices.clear();transform.detach();if(source!=='GLB · podgląd kolorów')glbSampleSkins=[];
  if(rootModel){roots.remove(rootModel);rootModel.traverse(o=>{if(o.geometry&&o.userData?.temporaryGeometry)o.geometry.dispose()})}
  rootModel=group;roots.add(rootModel);kind=source;nativeMeta=meta;textureMap=textureDictionary;
  renderer.localClippingEnabled=(source==='GLB · podgląd kolorów');
@@ -62,6 +66,7 @@ function setModel(group,source,meta=null,textureDictionary=new Map()){
    rotation:'decalRotation',reset:'decalReset',help:'decalHelp'
  }):null;
  $('decalControls').hidden=!decalEditor;
+ $('toggleLightSquares').disabled=source!=='DFF + TXD';
  if(decalEditor)decalEditor.updateMaterials(group);
  else $('decalHelp').textContent='Wczytaj Sultan LSPD DFF i TXD z atlasem mrplspddoors512. Wtedy będziesz przesuwać LS, herby i PD niezależnie od drzwi.';
 
@@ -85,8 +90,11 @@ function setModel(group,source,meta=null,textureDictionary=new Map()){
 function renderParts(){const needle=$('partSearch').value.trim().toLowerCase(),target=$('partList');target.replaceChildren();
  let n=0;for(const mesh of partMeshes){if(needle&&!mesh.name.toLowerCase().includes(needle))continue;n++;
   const row=document.createElement('button');row.className='part-item'+(selected===mesh?' active':'');row.title=mesh.name;
-  const eye=document.createElement('span');eye.className='eye'+(mesh.visible?'':' off');eye.textContent=mesh.visible?'◉':'◌';
-  eye.onclick=e=>{e.stopPropagation();mesh.visible=!mesh.visible;eye.className='eye'+(mesh.visible?'':' off');eye.textContent=mesh.visible?'◉':'◌';if(selected===mesh)$('partVisible').checked=mesh.visible};
+  const removed=isRemoved(mesh);
+  const eye=document.createElement('span');eye.className='eye'+(mesh.visible&&!removed?'':' off');eye.textContent=removed?'×':mesh.visible?'◉':'◌';
+  if(removed){row.style.opacity='.57';row.title=mesh.name+' — usunięto z DFF (kliknij, aby przywrócić)';}
+  eye.onclick=e=>{e.stopPropagation();if(removed){choose(mesh);return}
+    mesh.visible=!mesh.visible;renderParts();if(selected===mesh)$('partVisible').checked=mesh.visible};
   row.append(eye);const label=document.createElement('span');label.className='partlabel';label.textContent=mesh.name;row.append(label);
   row.onclick=()=>choose(mesh);target.append(row);
  }
@@ -97,16 +105,61 @@ function syncMountedMotion(){
    selectedPreviousWorld=propagateMountedTransform(selected,mountedFollowers,selectedPreviousWorld);
  }
 }
+
+function updateDeletionControls(){
+ const canRemove=kind==='DFF + TXD'&&selected&&Number.isInteger(atomicOf(selected))&&!selected.userData?.isWheelInstance;
+ const deleted=selected&&isRemoved(selected);
+ $('removePart').hidden=!!deleted;
+ $('removePart').disabled=!canRemove;
+ $('restorePart').hidden=!deleted;
+ $('partVisible').disabled=!!deleted;
+ $('partRemovalInfo').textContent=deleted
+  ?'Ta część będzie fizycznie usunięta z DFF przy eksporcie. Kliknij „Przywróć”, aby cofnąć.'
+  :!canRemove?'Wczytaj natywny DFF, aby usuwać części. Koła korzystają ze wspólnego atomika.':
+   '„Usuń część z DFF” jest trwałe po eksporcie. Zwykła widoczność działa tylko w podglądzie.';
+ const lights=partMeshes.filter(m=>helperLightNames.has(m.userData?.originalName));
+ const absent=lights.length&&lights.every(isRemoved);
+ $('toggleLightSquares').textContent=absent?'Przywróć 4 prostokąty LED':'Usuń 4 prostokąty LED z DFF';
+}
+function setAtomicRemoved(index,deleted){
+ if(!Number.isInteger(index))return;
+ if(deleted)removedAtomicIndices.add(index);else removedAtomicIndices.delete(index);
+ for(const mesh of partMeshes){
+   if(atomicOf(mesh)===index){
+     mesh.visible=!deleted&&(startState.get(mesh.uuid)?.visible??true);
+   }
+ }
+ if(selected&&isRemoved(selected))transform.detach();
+ else if(selected&&transform.object!==selected)transform.attach(selected);
+ updateDeletionControls();renderParts();
+}
+$('removePart').onclick=()=>{
+ if(!selected||kind!=='DFF + TXD'||selected.userData?.isWheelInstance)return;
+ setAtomicRemoved(atomicOf(selected),true);
+ message('Usunięto '+selected.name+' z podglądu. Zmiana będzie w pliku DFF po eksporcie.');
+};
+$('restorePart').onclick=()=>{if(selected)setAtomicRemoved(atomicOf(selected),false)};
+$('toggleLightSquares').onclick=()=>{
+ if(kind!=='DFF + TXD')return;
+ const lights=partMeshes.filter(m=>helperLightNames.has(m.userData?.originalName));
+ if(!lights.length){message('W tym modelu nie ma 4 pomocniczych prostokątów LED.');return}
+ const ids=[...new Set(lights.map(atomicOf).filter(Number.isInteger))];
+ const removing=ids.some(i=>!removedAtomicIndices.has(i));
+ for(const id of ids)setAtomicRemoved(id,removing);
+ message(removing?'Usunięto '+ids.length+' prostokąty LED. Wyeksportuj DFF/TXD, aby zapisać.':'Przywrócono prostokąty LED.');
+};
+
 function choose(mesh){selected=mesh;transform.detach();mountedFollowers=[];selectedPreviousWorld=null;
  $('inspectEmpty').hidden=!!mesh;$('inspectFields').hidden=!mesh;
- if(!mesh){$('selectedBadge').textContent='Brak zaznaczenia';renderParts();return}
+ if(!mesh){$('selectedBadge').textContent='Brak zaznaczenia';updateDeletionControls();renderParts();return}
  if(!mesh.matrixAutoUpdate){mesh.matrix.decompose(mesh.position,mesh.quaternion,mesh.scale);mesh.matrixAutoUpdate=true;}
  mountedFollowers=kind==='DFF + TXD'?mountFollowers(partMeshes,mesh):[];
  selectedPreviousWorld=worldMatrixOf(mesh);
  $('selectedBadge').textContent=mesh.name;
  $('partTitle').textContent=mesh.name+(mountedFollowers.length?' · razem z oznaczeniami':'');
  $('partVisible').checked=mesh.visible;
- transform.attach(mesh);transform.setMode('translate');$('moveMode').classList.add('active');$('rotateMode').classList.remove('active');$('scaleMode').classList.remove('active');sync();renderParts();
+ updateDeletionControls();
+ if(!isRemoved(mesh))transform.attach(mesh);transform.setMode('translate');$('moveMode').classList.add('active');$('rotateMode').classList.remove('active');$('scaleMode').classList.remove('active');sync();renderParts();
 }
 function sync(){if(!selected)return;for(const [id,x]of [['posX',selected.position.x],['posY',selected.position.y],['posZ',selected.position.z],['rotY',THREE.MathUtils.radToDeg(selected.rotation.y)],['scale',selected.scale.x]])$(id).value=Number(x.toFixed(3))}
 for(const id of ['posX','posY','posZ','rotY','scale'])$(id).addEventListener('change',()=>{
@@ -114,7 +167,8 @@ for(const id of ['posX','posY','posZ','rotY','scale'])$(id).addEventListener('ch
  if(id==='posX')selected.position.x=n;if(id==='posY')selected.position.y=n;if(id==='posZ')selected.position.z=n;
  if(id==='rotY')selected.rotation.y=THREE.MathUtils.degToRad(n);if(id==='scale'&&n>0&&n<50)selected.scale.setScalar(n);syncMountedMotion();sync();
 });
-$('partVisible').onchange=e=>{if(selected){selected.visible=e.target.checked;renderParts()}};
+$('partVisible').onchange=e=>{if(selected){if(isRemoved(selected)){e.target.checked=false;return}
+  selected.visible=e.target.checked;renderParts()}};
 for(const [button,mode] of [['moveMode','translate'],['rotateMode','rotate'],['scaleMode','scale']])$(button).onclick=()=>{transform.setMode(mode);for(const id of ['moveMode','rotateMode','scaleMode'])$(id).classList.toggle('active',id===button)};
 $('resetPart').onclick=()=>{if(!selected)return;
  for(const part of [selected,...mountedFollowers]){
@@ -125,7 +179,7 @@ $('resetPart').onclick=()=>{if(!selected)return;
  }
  if(!selected.matrixAutoUpdate){selected.matrix.decompose(selected.position,selected.quaternion,selected.scale);selected.matrixAutoUpdate=true;}
  selectedPreviousWorld=worldMatrixOf(selected);sync();renderParts()};
-$('partSearch').oninput=renderParts;$('showAll').onclick=()=>{partMeshes.forEach(m=>m.visible=true);renderParts()};$('hideAll').onclick=()=>{partMeshes.forEach(m=>m.visible=false);renderParts()};
+$('partSearch').oninput=renderParts;$('showAll').onclick=()=>{partMeshes.forEach(m=>{if(!isRemoved(m))m.visible=true});renderParts()};$('hideAll').onclick=()=>{partMeshes.forEach(m=>m.visible=false);renderParts()};
 for(const [id,fn] of [['grid',v=>floor.visible=v],['axes',v=>axes.visible=v],['rotate',v=>orbit.autoRotate=v],['wire',v=>partMeshes.forEach(m=>(Array.isArray(m.material)?m.material:[m.material]).forEach(x=>{x.wireframe=v}))],['lighting',v=>{hemi.intensity=v?Number($('ambient').value):2.4;sun.intensity=v?Number($('sun').value):0}]])$(id).onchange=e=>fn(e.target.checked);
 $('ambient').oninput=e=>hemi.intensity=Number(e.target.value);$('sun').oninput=e=>sun.intensity=Number(e.target.value);
 function renderTextures(){
@@ -300,10 +354,10 @@ $('saveNative').onclick=async()=>{
    const {zip,report}=makeNativeZIP({
       dff,txds,parts:partMeshes,initialStates:startState,
       paint:$('nativePaint').value,dffName:uploadedDFF.name,
-      doorAtlas:decalEditor
+      doorAtlas:decalEditor,removedAtomicIndices:[...removedAtomicIndices]
    });
    download(zip,'mrp-model-gotowy-dff-txd.zip','application/zip');
-   label.textContent='Gotowe: DFF (zmienione ramki: '+report.changedFrames+'), TXD: '+(report.editedTXD?'wypalone nowe oznaczenia':'bez zmian')+'. Sprawdź paczkę w MTA:SA przed wdrożeniem.';
+   label.textContent='Gotowe: DFF (zmienione ramki: '+report.changedFrames+', usunięte części: '+report.removedAtomics+'), TXD: '+(report.editedTXD?'nowe oznaczenia':'bez zmian')+'. Sprawdź w MTA:SA.';
    message('Pobrano model DFF + TXD');
  }catch(e){console.error('Native DFF export error:',e);label.textContent='Eksport nieudany: '+(e.message||e);message('Błąd eksportu: '+(e.message||e))}
  finally{button.disabled=false}
