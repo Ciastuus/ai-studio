@@ -52,6 +52,11 @@ export function normalizeVehicleMaterials(mesh,paint='#242930'){
  let changed=0;
  for(const material of materials){
   if(!isVehicleRemapMaterial(material))continue;
+  // A missing vehicle.txd creates a placeholder THREE.Texture with no pixels.
+  // In that case the placeholder would multiply the chosen paint to black.
+  if(material.map && !material.map.image && !(material.map.mipmaps?.length)){
+    material.map=null;
+  }
   material.color.set(paint);
   material.name='GTA:SA · lakier pojazdu (remap)';
   material.userData={...material.userData,vehiclePaint:true};
@@ -63,6 +68,9 @@ export function normalizeVehicleMaterials(mesh,paint='#242930'){
 }
 export function isReducedOrDamagedVehiclePart(name){
  return /(?:^|_)(?:vlo|low|lod|dam)(?:_|$)/i.test(name);
+}
+export function wheelDummyTargets(frames){
+ return frames.map((frame,index)=>({frame,index})).filter(o=>/^wheel_(?:lf|rf|lb|rb)_dummy$/i.test(o.frame.name));
 }
 
 export function nativeGroup(buffer, textureBuffers=[]){
@@ -99,7 +107,7 @@ export function nativeGroup(buffer, textureBuffers=[]){
     const wheel=frame.name.toLowerCase()==='wheel';
     // GTA:SA stores ONE wheel geometry and positions 4 copies at wheel_*_dummy.
     const targetFrames=wheel
-      ?metadata.frames.map((f,i)=>({frame:f,index:i})).filter(o=>/^wheel_(?:lf|rf|lb|rb)_dummy$/i.test(o.frame.name))
+      ?wheelDummyTargets(metadata.frames)
       :[{frame,index:a.frame}];
     for(const {frame:target,index} of targetFrames){
       const materials=Array.isArray(base.material)?base.material.map(x=>x.clone()):base.material.clone();
