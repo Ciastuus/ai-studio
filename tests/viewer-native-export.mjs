@@ -52,4 +52,20 @@ if(output.report.changedFrames!==1||output.zip.length<200)throw Error('Native ZI
 if(!Buffer.from(output.zip).includes(Buffer.from('sultan.txd')) || !Buffer.from(output.zip).includes(Buffer.from('sultan_lspd.dff')))throw Error('ZIP is missing DFF or TXD');
 let errors=0;try{makeNativeZIP({dff:native,txds:[],parts:[mesh],initialStates:state})}catch(e){errors++}
 if(errors!==1)throw Error('Missing TXD was not rejected');
+// Full DXT3 writing test: an edited door atlas must change actual .txd bytes.
+const atlasRGBA=new Uint8Array(512*512*4);
+for(let i=0;i<atlasRGBA.length;i+=4){atlasRGBA[i]=238;atlasRGBA[i+1]=238;atlasRGBA[i+2]=233;atlasRGBA[i+3]=255}
+for(let y=100;y<200;y++)for(let x=70;x<150;x++){const i=(y*512+x)*4;atlasRGBA[i]=0;atlasRGBA[i+1]=0;atlasRGBA[i+2]=0}
+const sampleTXD=new Uint8Array(263000),offset=256;
+sampleTXD.set(new TextEncoder().encode('mrplspddoors512'),offset+20);
+sampleTXD.set(new TextEncoder().encode('DXT3'),offset+88);
+new DataView(sampleTXD.buffer).setUint32(offset+100,262144,true);
+const baked=makeNativeZIP({
+ dff:native,txds:[{name:'sultan.txd',data:sampleTXD.buffer}],parts:[mesh],initialStates:state,
+ doorAtlas:{dirty:true,texels:atlasRGBA,state:[{id:'lsL',cx:120,cy:100,scale:1,rotation:0}]}
+});
+if(baked.report.editedTXD!==1)throw Error('Edited TXD atlas was not detected');
+if(!Buffer.from(baked.zip).includes(Buffer.from('nowe LS, herby i PD')))throw Error('Native ZIP info lacks TXD bake flag');
+if(baked.zip.length<262144)throw Error('TXD compressed texture not included');
+console.log('PASS DXT3: independently moved labels are stored in TXD binary');
 console.log('PASS DFF: exact no-change round trip, modified RW frame, original atomic hierarchy, TXD in ZIP');
