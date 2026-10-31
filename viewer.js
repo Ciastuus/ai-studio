@@ -357,7 +357,7 @@ $('saveNative').onclick=async()=>{
       doorAtlas:decalEditor,removedAtomicIndices:[...removedAtomicIndices]
    });
    download(zip,'mrp-model-gotowy-dff-txd.zip','application/zip');
-   label.textContent='Gotowe: DFF (zmienione ramki: '+report.changedFrames+', usunięte części: '+report.removedAtomics+'), TXD: '+(report.editedTXD?'nowe oznaczenia':'bez zmian')+'. Sprawdź w MTA:SA.';
+   label.textContent='Gotowe: DFF (zmienione ramki: '+report.changedFrames+', usunięte części: '+report.removedAtomics+', poprawione powiązania POLICE: '+report.attachedDecals.length+'), TXD: '+(report.editedTXD?'nowe oznaczenia':'bez zmian')+'. Sprawdź w MTA:SA.';
    message('Pobrano model DFF + TXD');
  }catch(e){console.error('Native DFF export error:',e);label.textContent='Eksport nieudany: '+(e.message||e);message('Błąd eksportu: '+(e.message||e))}
  finally{button.disabled=false}
