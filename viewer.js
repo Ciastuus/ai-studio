@@ -24,6 +24,13 @@ const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 let rootModel=null,selected=null,partMeshes=[],startState=new Map(),textureMap=new Map(),kind='—',nativeMeta=null;
 let uploadedDFF=null, uploadedTXD=[],statusTimer=null,spinTimer=null,debounced=false;
 let glbSampleSkins=[];
+function updateNativePaint(){
+ if(!rootModel)return;
+ const paints=rootModel.userData?.paintMaterials||[];
+ for(const m of paints){m.color.set($('nativePaint').value);m.needsUpdate=true}
+ $('nativePaintInfo').textContent='Rozpoznane materiały lakieru: '+paints.length+'. Kolor widoku: '+$('nativePaint').value+'. W MTA kolor nadwozia ustawia Lua.';
+}
+$('nativePaint').oninput=updateNativePaint;
 const formatSize=b=>b==null?'—':b>=1048576?(b/1048576).toFixed(1)+' MB':(b/1024).toFixed(0)+' KB';
 const escapeHTML=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('"','&quot;').replaceAll('>','&gt;');
 function status(s){$('state').textContent=s}
@@ -52,6 +59,11 @@ function setModel(group,source,meta=null,textureDictionary=new Map()){
  $('verts').textContent=totalV.toLocaleString('pl-PL');$('tris').textContent=Math.round(totalF).toLocaleString('pl-PL');$('mats').textContent=materialSet.size.toLocaleString('pl-PL');$('partsCount').textContent=partMeshes.length;
  $('sourceKind').textContent=source;$('rwFormat').textContent=meta?'RenderWare 0x'+meta.version.toString(16).toUpperCase():'glTF / GLB';
  $('materialCount').textContent=materialSet.size;$('fileType').textContent=source==='DFF + TXD'?'NATYWNY':'GLB';
+ if(meta){
+   $('nativeDiagnostics').textContent='Ukryte LOD/uszkodzenia: '+meta.hiddenLOD+' · Koła: '+meta.wheelInstances+' · Materiały remap: '+meta.remapped;
+   $('nativePaint').value='#242930';
+   updateNativePaint();
+ }else $('nativeDiagnostics').textContent='Otwórz DFF, aby sprawdzić materiały lakieru i koła.';
  $('selectedBadge').textContent='Brak zaznaczenia';
  const mats=[...materialSet].map(uuid=>{for(const m of partMeshes){let list=Array.isArray(m.material)?m.material:[m.material];let found=list.find(x=>x.uuid===uuid);if(found)return found}}).filter(Boolean);
  $('materialList').innerHTML=mats.map((m,i)=>'<div class="material-item"><span class="mat-color" style="background:#'+m.color?.getHexString?.()+'"></span><span>'+escapeHTML(m.name||('Materiał '+(i+1)))+(m.map?' · TXD':'')+'</span></div>').join('');
