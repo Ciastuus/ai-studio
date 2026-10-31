@@ -118,7 +118,7 @@ $('reset').onclick=()=>{const n=selectedNode(),d=defaults.get(selected);n.positi
 const views={left:[-6,1.2,0],right:[6,1.2,0],front:[0,1.4,-7],rear:[0,1.4,7],top:[0,8,.001],angle:[-5.8,2.9,-5.5]};
 for(const b of document.querySelectorAll('[data-camera]'))b.onclick=()=>{const xyz=views[b.dataset.camera];camera.position.set(...xyz);orbit.target.set(0,.1,0);orbit.update();document.querySelectorAll('[data-camera]').forEach(x=>x.classList.toggle('chosen',x===b))};
 $('paint').oninput=e=>M.body.color.set(e.target.value);
-$('doorpaint').oninput=e=>M.doors.color.set(e.target.value);M.whiteShield.color.set(e.target.value);
+$('doorpaint').oninput=e=>{M.doors.color.set(e.target.value);M.whiteShield.color.set(e.target.value)};
 $('grid').onchange=e=>grid.visible=e.target.checked;
 $('resetColors').onclick=()=>{M.body.color.set(dark);M.doors.color.set(white);M.whiteShield.color.set(white);M.whiteShield.color.set(white);$('paint').value=dark;$('doorpaint').value=white;try{const local=localStorage.getItem('mrp-lspd-studio-v2');if(local){const saved=JSON.parse(local);saved.paint=dark;saved.doorpaint=white;localStorage.setItem('mrp-lspd-studio-v2',JSON.stringify(saved))}}catch(e){console.warn(e)}};
 $('editMode').onclick=()=>{editing=true;decals.visible=true;$('editMode').classList.add('on');$('previewMode').classList.remove('on')};
