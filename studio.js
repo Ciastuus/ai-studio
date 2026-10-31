@@ -20,6 +20,32 @@ const floor=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.MeshStandard
 floor.rotation.x=-Math.PI/2;floor.position.y=-.83;scene.add(floor);
 const grid=new THREE.GridHelper(16,32,0x4b657b,0x394b5b);grid.position.y=-.827;scene.add(grid);
 const car=new THREE.Group(),decals=new THREE.Group();scene.add(car,decals);
+const wheelOverlays=[];
+const tireMat=new THREE.MeshBasicMaterial({color:0x202429,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});
+const rimMat=new THREE.MeshBasicMaterial({color:0x9ca4aa,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});
+const spokeMat=new THREE.MeshBasicMaterial({color:0xcbd0d3,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});
+const hubMat=new THREE.MeshBasicMaterial({color:0x31373c,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});
+function makeEditableWheel(side,z){
+  const face=new THREE.Group();
+  face.rotation.y=side==='L'?-Math.PI/2:Math.PI/2;
+  face.position.set(side==='L'?-1.145:1.145,-.255,z);
+  const torus=new THREE.Mesh(new THREE.TorusGeometry(.283,.060,7,24),tireMat);
+  face.add(torus);
+  const disc=new THREE.Mesh(new THREE.CircleGeometry(.238,24),rimMat);
+  disc.position.z=.005;face.add(disc);
+  const inset=new THREE.Mesh(new THREE.CircleGeometry(.173,24),hubMat);
+  inset.position.z=.009;face.add(inset);
+  for(let i=0;i<5;i++){
+    const pivot=new THREE.Group();pivot.rotation.z=2*Math.PI*i/5;
+    const spoke=new THREE.Mesh(new THREE.BoxGeometry(.068,.200,.014),spokeMat);
+    spoke.position.set(0,.127,.018);pivot.add(spoke);face.add(pivot);
+  }
+  const center=new THREE.Mesh(new THREE.CircleGeometry(.049,16),rimMat);
+  center.position.z=.028;face.add(center);
+  face.traverse(o=>{if(o.isMesh)o.renderOrder=75});
+  car.add(face);wheelOverlays.push({mesh:face,side});
+}
+for(const side of ['L','R'])for(const z of [-1.554,1.446])makeEditableWheel(side,z);
 let loaded=false, editing=true, selected='lsL';
 const dark='#242930',white='#efeee8';
 const paintMeshes=[],doorMeshes=[],whiteSurfaces=[];
@@ -151,6 +177,7 @@ function frame(){
   orbit.update();
   const positive=camera.position.x>.1,negative=camera.position.x<-.1;
   for(const item of whiteSurfaces)item.mesh.visible=(item.side==='R'?positive:negative);
+  for(const item of wheelOverlays)item.mesh.visible=(item.side==='R'?positive:negative);
   for(const [id,node] of nodes){if(/^(ls|pd|badge)[LR]$/.test(id)){node.visible=id.endsWith('L')?negative:positive}}
   renderer.render(scene,camera);
 }frame();
