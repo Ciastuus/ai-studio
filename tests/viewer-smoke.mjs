@@ -10,7 +10,7 @@ try{
  await page.waitForFunction(()=>{
   const text=document.querySelector('#state')?.textContent||'';
   return text.includes('GLB')&&document.querySelectorAll('.part-item').length>0;
- },{timeout:45000});
+ },null,{timeout:45000});
  const count=await page.locator('.part-item').count();
  if(count<30)throw Error('Only '+count+' model parts loaded');
  await page.locator('.part-item').first().click();
