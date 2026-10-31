@@ -7,6 +7,9 @@ page.on('pageerror',err=>errors.push('PAGE ERROR: '+err.message));
 page.on('console',msg=>{if(msg.type()==='error')errors.push('CONSOLE: '+msg.text())});
 try{
  await page.goto('http://127.0.0.1:8765/viewer.html',{waitUntil:'domcontentloaded',timeout:40000});
+ const preStatus=(await page.locator('#state').textContent())?.trim();
+ if(!preStatus?.includes('DFF'))throw Error('Native import should be the default viewer state');
+ await page.locator('#loadSample').click();
  await page.waitForFunction(()=>{
   const text=document.querySelector('#state')?.textContent||'';
   return text.includes('GLB')&&document.querySelectorAll('.part-item').length>0;
