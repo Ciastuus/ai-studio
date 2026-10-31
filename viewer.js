@@ -252,4 +252,8 @@ $('saveGLB').onclick=()=>{if(!rootModel){message('Najpierw wczytaj model.');retu
  },e=>{message(e.message||String(e));console.error(e)},{binary:true,onlyVisible:true})};
 window.addEventListener('error',e=>{if(!$('loading').hidden)fail(e.error||Error(e.message))});
 window.addEventListener('unhandledrejection',e=>{if(!$('loading').hidden)fail(e.reason instanceof Error?e.reason:new Error(String(e.reason)))});
-loadSample();
+/* Native RenderWare is the primary workflow; the old GLB is optional only. */
+ready();
+status('Wybierz DFF i TXD');
+$('loadingTitle').textContent='Wybierz plik DFF i TXD';
+$('loadingMessage').textContent='W panelu Pliki dodaj model .dff i słownik tekstur .txd. Opcjonalny starszy GLB nie jest wiernym odwzorowaniem GTA:SA.';
