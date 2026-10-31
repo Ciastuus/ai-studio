@@ -13,7 +13,7 @@ try{
      const i=(y*512+x)*4;rgba.set([238,238,233,255],i);
    }
    const shapes=[[84,114,138,213],[179,100,221,214],[284,103,327,209],
-      [372,114,446,213],[30,369,98,471],[408,368,465,469]];
+      [372,114,446,213],[30,369,136,471],[408,368,465,469]];
    for(const [x1,y1,x2,y2] of shapes)for(let y=y1;y<y2;y++)for(let x=x1;x<x2;x++){
      const i=(y*512+x)*4;rgba.set([18,18,18,255],i);
    }
@@ -22,6 +22,12 @@ try{
    window.__decalsTest=createDecalEditor(dict,{preview:'decalAtlas',select:'decalSelect',
      scale:'decalScale',rotation:'decalRotation',reset:'decalReset',help:'decalHelp'});
    if(!window.__decalsTest)throw Error('Decal editor creation failed');
+   // The glyph D extends beyond the old left-rear PD extraction boundary x=121.
+   // The entire D must survive layer extraction and redraw in the atlas.
+   const D=(400*512+132)*4;
+   if(tex.image.data[D]>60 || tex.image.data[D+1]>60 || tex.image.data[D+2]>60)
+     throw Error('Right side of rear-left D is clipped during TXD layer extraction');
+
    document.getElementById('decalControls').hidden=false;
    return document.querySelectorAll('#decalSelect option').length;
  });
