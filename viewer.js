@@ -4,6 +4,7 @@ import { TransformControls } from 'three/addons/controls/TransformControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { nativeGroup } from './viewer-rw.js';
+import { makeNativeZIP } from './viewer-native-export.js';
 import { mountFollowers, worldMatrixOf, propagateMountedTransform } from './viewer-assemblies.js';
 
 const $=id=>document.getElementById(id);
@@ -59,6 +60,7 @@ function setModel(group,source,meta=null,textureDictionary=new Map()){
  const totalF=partMeshes.reduce((n,x)=>n+(x.geometry.index?x.geometry.index.count/3:x.geometry.attributes.position.count/3),0);
  const materialSet=new Set();partMeshes.forEach(mesh=>(Array.isArray(mesh.material)?mesh.material:[mesh.material]).forEach(m=>materialSet.add(m.uuid)));
  $('verts').textContent=totalV.toLocaleString('pl-PL');$('tris').textContent=Math.round(totalF).toLocaleString('pl-PL');$('mats').textContent=materialSet.size.toLocaleString('pl-PL');$('partsCount').textContent=partMeshes.length;
+ $('saveNative').disabled=!(source==='DFF + TXD' && uploadedDFF && uploadedTXD.length);
  $('sourceKind').textContent=source;$('rwFormat').textContent=meta?'RenderWare 0x'+meta.version.toString(16).toUpperCase():'glTF / GLB';
  $('materialCount').textContent=materialSet.size;$('fileType').textContent=source==='DFF + TXD'?'NATYWNY':'GLB';
  if(meta){
@@ -274,6 +276,25 @@ const drop=$('drop');window.addEventListener('dragover',e=>e.preventDefault());w
 for(const type of ['dragenter','dragover'])drop.addEventListener(type,e=>{e.preventDefault();drop.classList.add('drag')});
 drop.addEventListener('dragleave',()=>drop.classList.remove('drag'));
 $('loadSample').onclick=loadSample;$('retry').onclick=()=>uploadedDFF?loadNativeFiles():loadSample();
+$('saveNative').onclick=async()=>{
+ const button=$('saveNative'),label=$('nativeSaveStatus');
+ if(kind!=='DFF + TXD'||!uploadedDFF||!uploadedTXD.length){
+   label.textContent='Wczytaj prawdziwy model DFF i co najmniej jedno TXD.';return;
+ }
+ button.disabled=true;label.textContent='Zapisuję zmodyfikowane ramki DFF i dołączam tekstury TXD…';
+ try{
+   const dff=await uploadedDFF.arrayBuffer();
+   const txds=await Promise.all(uploadedTXD.map(async f=>({name:f.name,data:await f.arrayBuffer()})));
+   const {zip,report}=makeNativeZIP({
+      dff,txds,parts:partMeshes,initialStates:startState,
+      paint:$('nativePaint').value,dffName:uploadedDFF.name
+   });
+   download(zip,'mrp-model-gotowy-dff-txd.zip','application/zip');
+   label.textContent='Gotowe! Zapisano '+report.changedFrames+' zmodyfikowanych ramek DFF; dołączono '+txds.length+' TXD. Instalację w MTA sprawdź przed użyciem na serwerze.';
+   message('Pobrano model DFF + TXD');
+ }catch(e){console.error('Native DFF export error:',e);label.textContent='Eksport nieudany: '+(e.message||e);message('Błąd eksportu: '+(e.message||e))}
+ finally{button.disabled=!(kind==='DFF + TXD'&&uploadedDFF&&uploadedTXD.length)}
+};
 $('savePNG').onclick=()=>{renderer.render(scene,camera);renderer.domElement.toBlob(b=>b&&download(b,'mrp-model-view.png','image/png'))};
 $('saveJSON').onclick=()=>{const elements=partMeshes.map(m=>({name:m.name,originalName:m.userData.originalName||null,position:m.position.toArray(),quaternion:m.quaternion.toArray(),scale:m.scale.toArray(),visible:m.visible}));download(JSON.stringify({format:'MRP-Viewer-Transforms-v1',source:kind,info:'Transformations for viewer preview, not an edited DFF',elements},null,2),'mrp-viewer-transformations.json','application/json')};
 $('saveGLB').onclick=()=>{if(!rootModel){message('Najpierw wczytaj model.');return}const visible=new THREE.Group();visible.add(rootModel.clone(true));new GLTFExporter().parse(visible,result=>{
