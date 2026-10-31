@@ -6,15 +6,64 @@ const convert = new THREE.Matrix4().set(1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1);
 const inverseConvert = convert.clone().invert();
 const almostEqual = (a,b,epsilon=0.000002) => a.elements.every((v,i)=>Math.abs(v-b.elements[i]) <= epsilon);
 
+
+/**
+ * Permanently remove chosen atomic instances from the RenderWare CLUMP.
+ * Retain geometry/frames (other components can reuse them), patch the clump
+ * atomic count and root chunk size. This is a REAL DFF edit, not visibility.
+ */
+export function removeAtomicChunksDFF(input, atomicIndices) {
+  const selected=new Set([...atomicIndices||[]].map(Number));
+  if(!selected.size)return {dff:input,removed:0};
+  if(!(input instanceof ArrayBuffer))throw Error('Niepoprawny DFF');
+  const view=new DataView(input),size=input.byteLength;
+  if(size<64||view.getUint32(0,true)!==0x10)throw Error('DFF nie zawiera struktury CLUMP');
+  const rootLen=view.getUint32(4,true),end=12+rootLen;
+  if(end>size)throw Error('Niekompletna długość CLUMP');
+  const source=new Uint8Array(input),parts=[];
+  let p=12,atomIndex=0,atomicCount=0,structOffset=-1,structCount=-1,removed=0;
+  while(p+12<=end){
+    const type=view.getUint32(p,true),len=view.getUint32(p+4,true),next=p+12+len;
+    if(next>end||next<=p)throw Error('Niepoprawny blok RenderWare');
+    if(type===1 && structOffset<0){
+      if(len<12)throw Error('Nieznany format nagłówka CLUMP');
+      structOffset=p+12;structCount=view.getUint32(structOffset,true);
+    }
+    if(type===0x14){
+      atomicCount++;
+      if(selected.has(atomIndex)){removed++;atomIndex++;p=next;continue;}
+      atomIndex++;
+    }
+    parts.push(source.subarray(p,next));p=next;
+  }
+  if(p!==end||structOffset<0||structCount!==atomicCount)throw Error('Niespójna liczba atomików DFF');
+  if([...selected].some(x=>!Number.isInteger(x)||x<0||x>=atomicCount)||removed!==selected.size)
+    throw Error('Próba usunięcia nieistniejącej części DFF');
+  if(removed===atomicCount)throw Error('Nie można usunąć wszystkich atomików modelu');
+  const childrenLength=parts.reduce((n,x)=>n+x.byteLength,0);
+  const tail=source.subarray(end);
+  const out=new Uint8Array(12+childrenLength+tail.length);
+  out.set(source.subarray(0,12),0);
+  let dest=12;
+  for(const part of parts){out.set(part,dest);dest+=part.length;}
+  out.set(tail,dest);
+  const result=new DataView(out.buffer);
+  result.setUint32(4,childrenLength,true);
+  result.setUint32(structOffset,atomicCount-removed,true); // first CLUMP STRUCT chunk is kept at the same offset
+  return {dff:out.buffer,removed};
+}
+
 /** Write edited component transforms to the real DFF RenderWare FrameList. */
-export function exportEditedDFF(originalDFF, parts, initialStates) {
+export function exportEditedDFF(originalDFF, parts, initialStates, removedAtomicIndices=[]) {
   if (!(originalDFF instanceof ArrayBuffer)) throw Error('Potrzebny jest bazowy plik DFF.');
   const info=getRWInfo(originalDFF);
   const changes=new Map(),names=[],skipped=[];
+  const removedSet=new Set(removedAtomicIndices);
   for(const mesh of parts){
     if(!mesh.isMesh)continue;
     const frame=mesh.userData.frameIndex,before=initialStates.get(mesh.uuid);
     if(!Number.isInteger(frame)||frame<0||frame>=info.frames.length||!before)continue;
+    if(removedSet.has(mesh.userData.atomicIndex))continue;
     if(mesh.matrixAutoUpdate)mesh.updateMatrix();
     if(almostEqual(mesh.matrix,before.matrix)){
       if(mesh.visible!==before.visible)skipped.push(mesh.name+' (widoczność)');
@@ -51,12 +100,13 @@ export function exportEditedDFF(originalDFF, parts, initialStates) {
     for(let j=0;j<9;j++)view.setFloat32(off+4*j,rotation[j],true);
     for(let j=0;j<3;j++)view.setFloat32(off+36+j*4,e[12+j],true);
   }
-  return {dff:saved,changedFrames:changes.size,changedNames:[...new Set(names)],omitted:skipped};
+  const filtered=removeAtomicChunksDFF(saved,removedAtomicIndices);
+  return {dff:filtered.dff,removedAtomics:filtered.removed,changedFrames:changes.size,changedNames:[...new Set(names)],omitted:skipped};
 }
 
-export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sultan_lspd.dff',doorAtlas=null}){
+export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sultan_lspd.dff',doorAtlas=null,removedAtomicIndices=[]}){
   if(!dff||!Array.isArray(txds)||txds.length===0)throw Error('Najpierw wczytaj bazowy DFF i TXD.');
-  const built=exportEditedDFF(dff,parts,initialStates);
+  const built=exportEditedDFF(dff,parts,initialStates,removedAtomicIndices);
   const names=new Set(),safeDff=dffName.split(/[\\/]/).pop();
   if(!/^[\w.()-]+\.dff$/i.test(safeDff))throw Error('Niepoprawna nazwa DFF');
   const files=[['files/'+safeDff,new Uint8Array(built.dff)]];
@@ -80,15 +130,17 @@ export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sulta
   const rgb=[1,3,5].map(i=>parseInt(paintHex.slice(i,i+2),16));
   const summary='M-RP DFF / TXD - eksport z RenderWare Viewer\r\n\r\n'
    +'Zmodyfikowane ramki DFF: '+built.changedFrames+'\r\n'
+   +'Trwale usuniete atomiki DFF: '+built.removedAtomics+'\r\n'
    +'Zmodyfikowane czesci: '+(built.changedNames.join(', ')||'brak zmian')+'\r\n'
    +'TXD: '+(editedTXD?'nowe LS, herby i PD wypalone w DXT3.':'oryginalne tekstury bez zmian.')+'\r\n'
    +'Lakier GTA:SA to dynamiczny remap. Kolor ustaw w Lua:\r\n'
    +'setVehicleColor(vehicle, '+rgb.join(', ')+', '+rgb.join(', ')+')\r\n\r\n'
    +'UWAGA: przesuniecia, obroty i skala sa zapisane do FrameList DFF. '
-   +'Ukrywanie/pokazywanie czesci oraz zmiany kolorow/materialow w podgladzie '
+   +'Usuwanie czesci przez przycisk Usun czesc z DFF jest trwale. '
+   +'Zwykla widocznosc i zmiany kolorow/materialow w podgladzie '
    +'nie zmieniaja DFF/TXD. vehicle.txd jest w optional/ i nie powinien zastepowac '
    +'pliku wspoldzielonego przez GTA. Przetestuj model w MTA:SA przed wdrozeniem.\r\n';
   files.push(['README.txt',summary]);
-  files.push(['model-edits.json',JSON.stringify({format:'MRP-Viewer-NativeExport-v1',paint:paintHex,modified:built.changedNames,skippedVisibility:built.omitted,editedTXD,decals:doorAtlas?.state||[]},null,2)]);
+  files.push(['model-edits.json',JSON.stringify({format:'MRP-Viewer-NativeExport-v1',paint:paintHex,modified:built.changedNames,skippedVisibility:built.omitted,removedAtomicIndices:[...removedAtomicIndices],editedTXD,decals:doorAtlas?.state||[]},null,2)]);
   return {zip:zipStore(files),report:{...built,editedTXD}};
 }
