@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { getRWInfo } from '../viewer-rw.js';
-import { exportEditedDFF, makeNativeZIP } from '../viewer-native-export.js';
+import { exportEditedDFF, makeNativeZIP, removeAtomicChunksDFF } from '../viewer-native-export.js';
 
 // Minimal RenderWare CLUMP with two parented frames and one atomic.
 function chunk(type,data) {
@@ -68,4 +68,40 @@ if(baked.report.editedTXD!==1)throw Error('Edited TXD atlas was not detected');
 if(!Buffer.from(baked.zip).includes(Buffer.from('nowe LS, herby i PD')))throw Error('Native ZIP info lacks TXD bake flag');
 if(baked.zip.length<262144)throw Error('TXD compressed texture not included');
 console.log('PASS DXT3: independently moved labels are stored in TXD binary');
+
+/* Real atomic deletion: remove actual RW CHUNK_ATOMICs, not merely flags or UI visibility. */
+const clumpHeader=new Uint8Array(12),headView=new DataView(clumpHeader.buffer);
+headView.setUint32(0,3,true); // THREE atomics
+const first=chunk(20,chunk(1,atomicStruct));
+const second=chunk(20,chunk(1,atomicStruct));
+const third=chunk(20,chunk(1,atomicStruct));
+const keepExtension=chunk(3,new Uint8Array([19,26,9,18]));
+const multi=chunk(16,join(chunk(1,clumpHeader),frameChunk,chunk(26,new Uint8Array(0)),first,second,third,keepExtension)).buffer;
+const initialInfo=getRWInfo(multi);
+if(initialInfo.atomics.length!==3)throw Error('Invalid test model');
+const initialBytes=new Uint8Array(multi);
+const unmodified=removeAtomicChunksDFF(multi,[]);
+if(Buffer.compare(Buffer.from(unmodified.dff),Buffer.from(multi))!==0)throw Error('Non-deleted DFF was modified');
+const trimmed=removeAtomicChunksDFF(multi,[1,2]);
+const trimmedInfo=getRWInfo(trimmed.dff);
+if(trimmed.removed!==2||trimmedInfo.atomics.length!==1)throw Error('Atomics were not physically removed');
+if(new DataView(trimmed.dff).getUint32(24,true)!==1)throw Error('Clump atomic count not patched');
+const bytesOfTrimmed=new Uint8Array(trimmed.dff);
+if(bytesOfTrimmed.length!==initialBytes.length-second.length-third.length)throw Error('DFF length incorrect');
+const afterRootEnd=12+new DataView(trimmed.dff).getUint32(4,true);
+if(afterRootEnd!==trimmed.dff.byteLength)throw Error('Clump header size not patched');
+if(!Buffer.from(bytesOfTrimmed).includes(Buffer.from([19,26,9,18])))throw Error('Other RW chunks were damaged');
+if(trimmedInfo.frames.length!==2||trimmedInfo.geometries!==0)throw Error('Frame list lost');
+let rejected=false;
+try{removeAtomicChunksDFF(multi,[77])}catch(e){rejected=true}
+if(!rejected)throw Error('Invalid atomic index accepted');
+rejected=false;
+try{removeAtomicChunksDFF(multi,[0,1,2])}catch(e){rejected=true}
+if(!rejected)throw Error('Removing every atomic must be prohibited');
+const zipped=makeNativeZIP({
+ dff:multi,txds:[{name:'sultan.txd',data:fakeTxd}],parts:[],
+ initialStates:new Map(),removedAtomicIndices:[1,2]
+});
+if(zipped.report.removedAtomics!==2)throw Error('ZIP report is missing deleted parts');
+console.log('PASS: atomic deletion rewrites DFF clump count, geometry instances and root size');
 console.log('PASS DFF: exact no-change round trip, modified RW frame, original atomic hierarchy, TXD in ZIP');
