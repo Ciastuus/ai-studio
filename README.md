@@ -12,7 +12,7 @@ Webowy edytor oznaczeń Sultana na prawdziwej geometrii GLB przygotowanej z DFF/
 ## Uwagi
 
 - Model GLB to konwersja DFF, a nie silnik renderowania GTA:SA; część materiałów i low-poly kół może się różnić od MTA.
-- Zmiany zapisują się do JSON. Nie modyfikują bezpośrednio DFF/TXD.
+- Stary edytor GLB zapisuje JSON lub natywny eksport dla określonej bazowej wersji V10. Nowy `viewer.html` czyta DFF/TXD, pozwala przesuwać części i osobno oznaczenia w atlasie TXD oraz eksportuje oba formaty.
 - Biblioteka Three.js jest pobierana z jsDelivr; strona wymaga internetu.
 - GitHub Pages publikuje zawartość repozytorium. Nie wrzucaj danych poufnych ani haseł.
 
@@ -32,3 +32,15 @@ Konwersja odbywa się wyłącznie w przeglądarce, bez przesyłania binarnych pl
 Archiwum zawiera `files/sultan_lspd.dff`, `files/sultan.txd` i pliki informacyjne. Podmień DFF/TXD w istniejącym zasobie MTA:SA; zachowaj pozostałe skrypty i meta.xml zasobu. Wymagana jest wersja bazowa V10 — mechanizm weryfikuje długość plików i SHA-256, aby nie nadpisać niezgodnego modelu.
 
 **Ograniczenia:** kolor lakieru w MTA sterowany jest przez `setVehicleColor` (Lua); sam DFF/TXD nie zastępuje tego wywołania. Weryfikacja syntaktyczna i testy kodowania DXT3/ZIP wykonywane są w GitHub Actions. Wyświetlanie w kliencie MTA:SA wymaga osobnego testu.
+
+## Viewer DFF/TXD — osobne oznaczenia i gotowy eksport
+
+Otwórz **[RenderWare Viewer](https://ciastuus.github.io/ai-studio/viewer.html)**. Wczytaj jednocześnie `sultan_lspd.dff` i `sultan.txd` z aktualnej paczki zasobu.
+
+- **Zakładka Oznaczenia**: osobno zaznacz `LS`, `PD` lub herb po dowolnej stronie pojazdu i przeciągnij na atlasie. Skala i obrót są niezależne, białe drzwi pozostają nieruchome. Nowy wygląd od razu trafia na model 3D.
+- **Inspektor Widok**: przesuwaj, obracaj i skaluj inne części DFF. Ruch maski i bagażnika obejmuje przypisany do nich napis POLICE.
+- **Zakładka Eksport**: **Eksportuj gotowy DFF + TXD (ZIP)**. Zapisuje transformacje ramek DFF do binarnego RenderWare; zmiany LS/herb/PD wypala w oryginalnym TXD DXT3; dołącza pliki do ZIP.
+
+Eksport wymaga źródłowego DFF i TXD. Jeśli wczytasz wyłącznie przykładowy GLB, eksport natywny wyświetli wyjaśnienie, a nie będzie udawał konwersji GLB → DFF. Wypalenie warstw wymaga tekstury `mrplspddoors512` w TXD. Oryginalne modyfikacje białych drzwi i aktualnego lakieru w skrypcie serwerowym pozostają; barwa lakieru wymaga `setVehicleColor` w Lua. Zwykła zmiana widoczności części w viewerze nie jest zapisywana w DFF.
+
+Testy binarnych DFF, DXT3 i przeglądarkowego przeciągania warstw są uruchamiane w GitHub Actions. Test w kliencie MTA:SA nadal jest potrzebny.
