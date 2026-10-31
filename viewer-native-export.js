@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { zipStore } from './native-export.js';
+import { zipStore, patchTXD, encodeDXT3 } from './native-export.js';
 import { getRWInfo } from './viewer-rw.js';
 
 const convert = new THREE.Matrix4().set(1,0,0,0, 0,0,1,0, 0,-1,0,0, 0,0,0,1);
@@ -54,26 +54,34 @@ export function exportEditedDFF(originalDFF, parts, initialStates) {
   return {dff:saved,changedFrames:changes.size,changedNames:[...new Set(names)],omitted:skipped};
 }
 
-export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sultan_lspd.dff'}){
+export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sultan_lspd.dff',doorAtlas=null}){
   if(!dff||!Array.isArray(txds)||txds.length===0)throw Error('Najpierw wczytaj bazowy DFF i TXD.');
   const built=exportEditedDFF(dff,parts,initialStates);
   const names=new Set(),safeDff=dffName.split(/[\\/]/).pop();
   if(!/^[\w.()-]+\.dff$/i.test(safeDff))throw Error('Niepoprawna nazwa DFF');
   const files=[['files/'+safeDff,new Uint8Array(built.dff)]];
+  const encoded=doorAtlas?.dirty?encodeDXT3(doorAtlas.texels):null;
+  let editedTXD=0;
   for(const {name,data} of txds){
     if(!(data instanceof ArrayBuffer))throw Error('Niepoprawny TXD: '+name);
     const safe=name.split(/[\\/]/).pop();
     if(!/^[\w.()-]+\.txd$/i.test(safe))throw Error('Niepoprawna nazwa TXD: '+name);
     if(names.has(safe.toLowerCase()))throw Error('Duplikat TXD: '+name);
     names.add(safe.toLowerCase());
-    files.push([(safe.toLowerCase()==='vehicle.txd'?'optional/':'files/')+safe,new Uint8Array(data)]);
+    let binary=new Uint8Array(data);
+    if(encoded){
+      try{binary=patchTXD(data,encoded);editedTXD++;}
+      catch(e){if(!String(e.message).includes('Brakuje atlasu mrplspddoors512'))throw e;}
+    }
+    files.push([(safe.toLowerCase()==='vehicle.txd'?'optional/':'files/')+safe,binary]);
   }
+  if(encoded&&editedTXD!==1)throw Error('Nie znaleziono jednego zgodnego TXD z atlasem drzwi.');
   const paintHex=/^#[a-f0-9]{6}$/i.test(paint||'')?paint:'#242930';
   const rgb=[1,3,5].map(i=>parseInt(paintHex.slice(i,i+2),16));
   const summary='M-RP DFF / TXD - eksport z RenderWare Viewer\r\n\r\n'
    +'Zmodyfikowane ramki DFF: '+built.changedFrames+'\r\n'
    +'Zmodyfikowane czesci: '+(built.changedNames.join(', ')||'brak zmian')+'\r\n'
-   +'TXD: oryginalne pliki przeniesione bez zmiany tekstur.\r\n'
+   +'TXD: '+(editedTXD?'nowe LS, herby i PD wypalone w DXT3.':'oryginalne tekstury bez zmian.')+'\r\n'
    +'Lakier GTA:SA to dynamiczny remap. Kolor ustaw w Lua:\r\n'
    +'setVehicleColor(vehicle, '+rgb.join(', ')+', '+rgb.join(', ')+')\r\n\r\n'
    +'UWAGA: przesuniecia, obroty i skala sa zapisane do FrameList DFF. '
@@ -81,6 +89,6 @@ export function makeNativeZIP({dff,txds,parts,initialStates,paint,dffName='sulta
    +'nie zmieniaja DFF/TXD. vehicle.txd jest w optional/ i nie powinien zastepowac '
    +'pliku wspoldzielonego przez GTA. Przetestuj model w MTA:SA przed wdrozeniem.\r\n';
   files.push(['README.txt',summary]);
-  files.push(['model-edits.json',JSON.stringify({format:'MRP-Viewer-NativeExport-v1',paint:paintHex,modified:built.changedNames,skippedVisibility:built.omitted},null,2)]);
-  return {zip:zipStore(files),report:built};
+  files.push(['model-edits.json',JSON.stringify({format:'MRP-Viewer-NativeExport-v1',paint:paintHex,modified:built.changedNames,skippedVisibility:built.omitted,editedTXD,decals:doorAtlas?.state||[]},null,2)]);
+  return {zip:zipStore(files),report:{...built,editedTXD}};
 }
