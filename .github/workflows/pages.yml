@@ -42,6 +42,7 @@ jobs:
           node tests/native-materials.mjs
           node tests/panel-decal-follow.mjs
           node tests/viewer-native-export.mjs
+          node tests/police-parent-hierarchy.mjs
           npx playwright install --with-deps chromium
           python3 -m http.server 8765 >/tmp/mrp-viewer-http.log 2>&1 &
           node tests/viewer-smoke.mjs
