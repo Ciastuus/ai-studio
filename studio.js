@@ -27,7 +27,8 @@ function mat(color,metalness=0,roughness=.82){return new THREE.MeshStandardMater
 const M={body:mat(dark,.08,.79),doors:mat(white,0,.8),trim:mat('#11171c',0,.9),glass:new THREE.MeshStandardMaterial({color:0x394957,opacity:.7,transparent:true,roughness:.19,metalness:0,side:THREE.DoubleSide}),wheel:mat('#7f858b',.32,.5),tire:mat('#24272b',.08,.93),light:mat('#c6c9cc',.08,.76),plate:mat('#d4d8db',.05,.8)};
 function ends(n){const m=n.match(/_(\d+)$/);return m?Number(m[1]):-1}
 function materialsFor(obj){const n=obj.name.toLowerCase();const idx=ends(n);
-  if(n.startsWith('lspd_door_')||n.startsWith('lspd_lightbar')||n.startsWith('lspd_bar_')||n.startsWith('lspd_hood')||n.startsWith('lspd_trunk')){obj.visible=false;return}
+  if(n.startsWith('lspd_door_')){obj.material=M.doors;obj.renderOrder=2;doorMeshes.push(obj);return}
+  if(n.startsWith('lspd_lightbar')||n.startsWith('lspd_bar_')||n.startsWith('lspd_hood')||n.startsWith('lspd_trunk')){obj.visible=false;return}
   if(n.startsWith('wheel_23_0')){obj.material=M.tire;return}
   if(n.startsWith('wheel_23_1')){obj.material=M.wheel;return}
   if(n.includes('windscreen')){obj.material=M.glass;return}
@@ -62,12 +63,12 @@ function seal(){const cv=document.createElement('canvas');cv.width=cv.height=512
   const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
 const labelTex={ls:canvasText('LS'),pd:canvasText('PD'),badge:seal(),police:canvasText('POLICE')};
 const config=[
-  ['lsL','LS · kierowca',[-1.22,-.06,-.72],[.42,.29],'ls',-Math.PI/2],
-  ['badgeL','Herb · kierowca',[-1.22,-.06,-.27],[.29,.29],'badge',-Math.PI/2],
-  ['pdL','PD · kierowca',[-1.14,-.06,.47],[.47,.30],'pd',-Math.PI/2],
-  ['lsR','LS · pasażer',[1.14,-.06,.49],[.42,.29],'ls',Math.PI/2],
-  ['badgeR','Herb · pasażer',[1.22,-.06,-.27],[.29,.29],'badge',Math.PI/2],
-  ['pdR','PD · pasażer',[1.22,-.06,-.73],[.47,.30],'pd',Math.PI/2],
+  ['lsL','LS · kierowca',[-1.085,-.06,-.40],[.42,.29],'ls',-Math.PI/2],
+  ['badgeL','Herb · kierowca',[-1.086,-.06,.02],[.29,.29],'badge',-Math.PI/2],
+  ['pdL','PD · kierowca',[-1.086,-.06,.56],[.47,.30],'pd',-Math.PI/2],
+  ['lsR','LS · pasażer',[1.085,-.06,-.40],[.42,.29],'ls',Math.PI/2],
+  ['badgeR','Herb · pasażer',[1.086,-.06,.02],[.29,.29],'badge',Math.PI/2],
+  ['pdR','PD · pasażer',[1.086,-.06,.56],[.47,.30],'pd',Math.PI/2],
   ['policeH','POLICE · maska',[0,.43,-1.80],[.7,.20],'police',0],
   ['policeT','POLICE · bagażnik',[0,.42,1.94],[.68,.19],'police',0],
   ['bar','Belka świetlna',[0,.73,-.05],[.9,.20],null,0]
