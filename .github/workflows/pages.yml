@@ -22,6 +22,9 @@ jobs:
         run: |
           node --check studio.js
           node --check native-export.js
+          node --check viewer.js
+          node --check viewer-rw.js
+          node --check vendor/dff-loader.es.js
           node --input-type=module <<'JS'
           import { zipStore, encodeDXT3 } from './native-export.js';
           const data=new Uint8Array(4*4*4).fill(255);
@@ -30,6 +33,19 @@ jobs:
           const archive=zipStore([['test.txt','M-RP']]);
           if(archive.length<100)throw Error('ZIP writer failed');
           JS
+      - name: Smoke test viewer in real Chromium
+        run: |
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          python3 -m http.server 8765 >/tmp/mrp-viewer-http.log 2>&1 &
+          node tests/viewer-smoke.mjs
+      - name: Upload rendered viewer screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viewer-smoke-preview
+          path: viewer-smoke.png
+          if-no-files-found: ignore
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
