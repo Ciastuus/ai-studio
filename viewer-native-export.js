@@ -13,7 +13,7 @@ const almostEqual = (a,b,epsilon=0.000002) => a.elements.every((v,i)=>Math.abs(v
  * atomic count and root chunk size. This is a REAL DFF edit, not visibility.
  */
 export function removeAtomicChunksDFF(input, atomicIndices) {
-  const selected=new Set([...atomicIndices||[]].map(Number));
+  const selected=new Set(Array.from(atomicIndices||[],Number));
   if(!selected.size)return {dff:input,removed:0};
   if(!(input instanceof ArrayBuffer))throw Error('Niepoprawny DFF');
   const view=new DataView(input),size=input.byteLength;
