@@ -21,7 +21,16 @@
   <div class="group"><h2>Wybierz element</h2><div class="buttons" id="items"></div><p class="help">Każdy napis, herb i belka mają niezależną pozycję. Stronę pasażera można regulować osobno.</p></div>
   <div class="group"><h2 id="selectedName">LS · kierowca</h2><div class="measure"><label for="x">X</label><input type="number" id="x" step="0.01"><label for="y">Wysokość</label><input type="number" id="y" step="0.01"><label for="z">Wzdłuż</label><input type="number" id="z" step="0.01"><label for="scale">Rozmiar</label><input type="number" id="scale" min="0.1" max="3" step="0.05"><label for="angle">Obrót (°)</label><input type="number" id="angle" step="1"></div><div class="nudge"><button data-nudge="left">←</button><button data-nudge="up">↑</button><button data-nudge="down">↓</button><button data-nudge="right">→</button></div><p class="help">Strzałki przesuwają zaznaczony element o 1 cm. Wartości są w metrach modelu.</p><button id="reset" class="wide">Przywróć wybrany element</button></div>
   <div class="group"><h2>Wygląd</h2><label class="swatch"><span>Nadwozie</span><input id="paint" type="color" value="#242930"></label><label class="swatch"><span>Drzwi</span><input id="doorpaint" type="color" value="#efeee8"></label><button id="resetColors" class="wide" type="button">Przywróć kolory LSPD (czarny / biały)</button><label class="swatch"><span>Pokaż siatkę pomocniczą</span><input id="grid" type="checkbox" checked></label><p class="help">Kolory służą do podglądu. Eksport pozycji nie zmienia plików DFF/TXD.</p></div>
-  <div class="group"><h2>Zapis ustawień</h2><button id="save" class="primary wide">Eksport JSON</button><button id="import" class="wide">Import JSON</button><input id="file" type="file" accept=".json,application/json" hidden><p class="help" id="savedNote">Możesz wrócić do zapisanych ustawień w tej przeglądarce.</p></div>
+  <div class="group" id="nativeGroup">
+<h2>Eksport prawdziwych DFF / TXD</h2>
+<p class="help">Zmiany z edytora zostaną zapisane w plikach gry. Wymagany jest oryginalny model <b>Sultan LSPD V10</b> (nie pliki z wcześniejszych przeróbek).</p>
+<label class="native-file">Bazowy plik DFF <input id="nativeDff" type="file" accept=".dff"></label>
+<label class="native-file">Bazowy plik TXD <input id="nativeTxd" type="file" accept=".txd"></label>
+<button id="nativeExport" class="primary wide" type="button" disabled>Utwórz DFF + TXD w ZIP</button>
+<p id="nativeStatus" class="help" role="status">Model musi się załadować. Pliki są przetwarzane w Twojej przeglądarce; niczego nie wysyłamy na serwer.</p>
+<p class="help">DFF: belka i napisy POLICE na blachach. TXD: LS, herb, PD oraz kolor białych paneli. Lakier karoserii w GTA:SA jest ustawiany także przez Lua (<code>setVehicleColor</code>).</p>
+</div>
+<div class="group"><h2>Zapis ustawień</h2><button id="save" class="primary wide">Eksport JSON</button><button id="import" class="wide">Import JSON</button><input id="file" type="file" accept=".json,application/json" hidden><p class="help" id="savedNote">Możesz wrócić do zapisanych ustawień w tej przeglądarce.</p></div>
 </aside>
 </main>
 <footer>Wersja testowa · geometrię pobrano z modelu DFF V10; materiały są poprawiane w podglądzie i nie stanowią identycznego renderingu MTA:SA. Koła pozostają low-poly.</footer>
@@ -32,5 +41,5 @@
   window.addEventListener('unhandledrejection',function(e){fail('Błąd biblioteki 3D lub połączenia: '+(e.reason?.message||e.reason))});
   setTimeout(function(){if(!window.__MRP_READY)fail('Model nie został wczytany. Sprawdź internet, bibliotekę Three.js oraz plik assets/sultan_lspd_v10.glb.')},25000);
 })();
-</script><script type="module" src="./studio.js?v=20261031-tested-black-white-wheels"></script>
+</script><script type="module" src="./studio.js?v=native-export-20261031"></script>
 </body></html>
