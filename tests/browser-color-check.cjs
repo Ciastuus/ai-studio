@@ -2,12 +2,22 @@ const {chromium}=require('playwright');
 const fs=require('fs');
 (async()=>{
   fs.mkdirSync('artifacts',{recursive:true});
-  const errors=[];
+  const errors=[],messages=[],failed=[];
   const browser=await chromium.launch({channel:'chrome',headless:true,args:['--no-sandbox','--enable-webgl','--enable-unsafe-swiftshader','--use-gl=angle','--use-angle=swiftshader']});
   const page=await browser.newPage({viewport:{width:1440,height:940},deviceScaleFactor:1});
   page.on('pageerror',e=>errors.push(e.message));
+  page.on('console',m=>messages.push(m.type()+': '+m.text()));
+  page.on('requestfailed',r=>failed.push(r.url()+' '+(r.failure()?.errorText||'')));
   await page.goto('http://127.0.0.1:9000/',{waitUntil:'domcontentloaded',timeout:30000});
-  await page.waitForFunction(()=>window.__MRP_READY===true,{timeout:70000});
+  try {
+    await page.waitForFunction(()=>window.__MRP_READY===true,null,{timeout:50000});
+  } catch(e) {
+    const state=await page.evaluate(()=>({ready:window.__MRP_READY,loading:document.querySelector('#loadingInfo')?.textContent,status:document.querySelector('#state')?.textContent,html:document.querySelector('#viewport')?.innerHTML.slice(0,300)}));
+    await page.screenshot({path:'artifacts/failed-loading.png'});
+    fs.writeFileSync('artifacts/debug.json',JSON.stringify({state,messages,failed,errors,error:e.message},null,2));
+    console.error('MODEL_LOAD_DIAGNOSTIC',JSON.stringify({state,messages,failed,errors}));
+    throw e;
+  }
   const views=['left','right','angle'];
   const stats={};
   const countPixels=()=>page.evaluate(()=>{
