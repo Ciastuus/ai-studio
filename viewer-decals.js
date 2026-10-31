@@ -8,7 +8,7 @@ const regions=[
  {id:'badgeL',name:'Herb — lewe przednie',region:[159,78,85,156],quadrant:[0,0,256,256]},
  {id:'badgeR',name:'Herb — prawe przednie',region:[261,78,86,157],quadrant:[256,0,256,256]},
  {id:'pdR',name:'PD — prawe przednie',region:[350,81,117,158],quadrant:[256,0,256,256]},
- {id:'pdL',name:'PD — lewe tylne',region:[9,328,112,175],quadrant:[0,256,256,256]},
+ {id:'pdL',name:'PD — lewe tylne',region:[10,332,150,176],quadrant:[0,256,256,256]},
  {id:'lsR',name:'LS — prawe tylne',region:[383,326,112,179],quadrant:[256,256,256,256]}
 ];
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
