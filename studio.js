@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { buildNative } from './native-export.js';
 
 const $ = id => document.getElementById(id);
 const stage=$('viewport'), status=$('state'), loading=$('loading'), loadingInfo=$('loadingInfo');
@@ -46,7 +47,7 @@ function makeEditableWheel(side,z){
   car.add(face);wheelOverlays.push({mesh:face,side});
 }
 for(const side of ['L','R'])for(const z of [-1.554,1.446])makeEditableWheel(side,z);
-let loaded=false, editing=true, selected='lsL';
+let loaded=false, editing=true, selected='lsL', nativeScene=null;
 const dark='#242930',white='#efeee8';
 const paintMeshes=[],doorMeshes=[],whiteSurfaces=[];
 function mat(color,metalness=0,roughness=.82){return new THREE.MeshStandardMaterial({color,metalness,roughness,side:THREE.DoubleSide})}
@@ -164,11 +165,37 @@ function resize(){const r=stage.getBoundingClientRect();if(r.width<2||r.height<2
 new ResizeObserver(resize).observe(stage);resize();choose('lsL');
 let timedOut=false;const timeout=setTimeout(()=>{if(!loaded){timedOut=true;loadingInfo.textContent='Przekroczono czas wczytywania. Sprawdź połączenie internetowe i plik assets/sultan_lspd_v10.glb.';$('retry').hidden=false}},20000);
 $('retry').onclick=()=>location.reload();
+
+/* Native export converts live editor transforms directly to GTA:SA RenderWare binaries.
+   User selects unmodified V10 source files. No upload or external backend. */
+$('nativeExport').addEventListener('click',async()=>{
+ const btn=$('nativeExport'),note=$('nativeStatus');
+ const tell=(message,kind='')=>{note.textContent=message;note.classList.remove('is-error','is-success');if(kind)note.classList.add('is-'+kind)};
+ if(!loaded||!nativeScene){tell('Poczekaj na zaladowanie modelu GLB.','error');return}
+ const df=$('nativeDff').files[0],tf=$('nativeTxd').files[0];
+ if(!df||!tf){tell('Wybierz oba pliki z oryginalnego zasobu V10: sultan_lspd.dff oraz sultan.txd.','error');return}
+ btn.disabled=true;
+ try{
+  tell('Sprawdzam bazowe DFF/TXD i wypalam atlas oznaczen...');
+  const state=snapshot();
+  const art={};
+  for(const k of ['ls','badge','pd']){
+   const canvas=labelTex[k].image;
+   if(!canvas?.getContext)throw Error('Niedostepna tekstura edytora '+k);
+   art[k]={width:canvas.width,height:canvas.height,data:canvas.getContext('2d',{willReadFrequently:true}).getImageData(0,0,canvas.width,canvas.height).data};
+  }
+  const result=await buildNative({dff:await df.arrayBuffer(),txd:await tf.arrayBuffer(),state,art,carScene:nativeScene});
+  download(new Blob([result.zip],{type:'application/zip'}),'mrp-sultan-lspd-natywny-dff-txd.zip');
+  tell('Gotowe: zapisano zmodyfikowane DFF oraz TXD w ZIP. POLICE na masce/bagazniku i belka sa geometria DFF, LS/herb/PD sa w teksturze TXD.','success');
+  console.info('M-RP native export:',result.reports);
+ }catch(e){console.error('Eksport natywny nieudany',e);tell('Nie udalo sie wyeksportowac modelu: '+(e.message||e),'error')}
+ finally{btn.disabled=!loaded}
+});
 const loader=new GLTFLoader();loadingInfo.textContent='Pobieranie assets/sultan_lspd_v10.glb…';
 loader.load('./assets/sultan_lspd_v10.glb',g=>{
-  car.add(g.scene);let count=0,painted=0,doored=0;
+  nativeScene=g.scene;car.add(g.scene);let count=0,painted=0,doored=0;
   g.scene.traverse(o=>{if(!o.isMesh)return;count++;materialsFor(o)});painted=paintMeshes.length;doored=doorMeshes.length;
-  loading.hidden=true;loaded=true;window.__MRP_READY=true;clearTimeout(timeout);status.textContent=`Model załadowany · ${count} siatek`; $('meshInfo').textContent=`${count} części · drzwi ${doored} · białe panele ${whiteSurfaces.length}`;
+  loading.hidden=true;loaded=true;$('nativeExport').disabled=false;window.__MRP_READY=true;clearTimeout(timeout);status.textContent=`Model załadowany · ${count} siatek`; $('meshInfo').textContent=`${count} części · drzwi ${doored} · białe panele ${whiteSurfaces.length}`;
   try{const local=localStorage.getItem('mrp-lspd-studio-v2');if(local){const saved=JSON.parse(local);delete saved.paint;delete saved.doorpaint;apply(saved)}}catch(e){console.warn(e)}
   M.body.color.set(dark);M.doors.color.set(white);M.whiteShield.color.set(white);$('paint').value=dark;$('doorpaint').value=white;
 },progress=>{if(progress.lengthComputable)loadingInfo.textContent=`Pobrano ${Math.round(progress.loaded/progress.total*100)}% modelu`;else loadingInfo.textContent='Pobieranie modelu 3D…'},err=>{clearTimeout(timeout);loadingInfo.textContent='Nie udało się pobrać modelu 3D: '+(err?.message||err);status.textContent='Błąd ładowania';$('retry').hidden=false;console.error(err)});
