@@ -51,7 +51,6 @@ function setModel(group,source,meta=null,textureDictionary=new Map()){
  $('sourceKind').textContent=source;$('rwFormat').textContent=meta?'RenderWare 0x'+meta.version.toString(16).toUpperCase():'glTF / GLB';
  $('materialCount').textContent=materialSet.size;$('fileType').textContent=source==='DFF + TXD'?'NATYWNY':'GLB';
  $('selectedBadge').textContent='Brak zaznaczenia';
- $('meshInfo').textContent=undefined; // ignored in current viewer template
  const mats=[...materialSet].map(uuid=>{for(const m of partMeshes){let list=Array.isArray(m.material)?m.material:[m.material];let found=list.find(x=>x.uuid===uuid);if(found)return found}}).filter(Boolean);
  $('materialList').innerHTML=mats.map((m,i)=>'<div class="material-item"><span class="mat-color" style="background:#'+m.color?.getHexString?.()+'"></span><span>'+escapeHTML(m.name||('Materiał '+(i+1)))+(m.map?' · TXD':'')+'</span></div>').join('');
  focusModel();renderParts();renderTextures();ready();status(source+' · '+partMeshes.length+' części');message('Model wczytany: '+partMeshes.length+' części');
@@ -121,7 +120,7 @@ document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{
 function resize(){const r=stage.getBoundingClientRect();if(r.width<2||r.height<2)return;renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}
 new ResizeObserver(resize).observe(stage);
 renderer.domElement.addEventListener('pointerdown',e=>{
- if(e.button!==0||!rootModel||transform.dragging)return;
+ if(e.button!==0||!rootModel||transform.axis!==null)return;
  const r=renderer.domElement.getBoundingClientRect();pointer.set((e.clientX-r.left)/r.width*2-1,-(e.clientY-r.top)/r.height*2+1);ray.setFromCamera(pointer,camera);
  const hit=ray.intersectObjects(partMeshes.filter(m=>m.visible),false);
  if(hit.length){choose(hit[0].object);document.querySelector('[data-tab="view"]').click()}
