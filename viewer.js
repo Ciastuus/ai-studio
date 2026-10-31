@@ -5,6 +5,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/addons/exporters/GLTFExporter.js';
 import { nativeGroup } from './viewer-rw.js';
 import { makeNativeZIP } from './viewer-native-export.js';
+import { createDecalEditor } from './viewer-decals.js';
 import { mountFollowers, worldMatrixOf, propagateMountedTransform } from './viewer-assemblies.js';
 
 const $=id=>document.getElementById(id);
@@ -26,7 +27,7 @@ const ray=new THREE.Raycaster(),pointer=new THREE.Vector2();
 let rootModel=null,selected=null,partMeshes=[],startState=new Map(),textureMap=new Map(),kind='—',nativeMeta=null;
 let mountedFollowers=[],selectedPreviousWorld=null;
 let uploadedDFF=null, uploadedTXD=[],statusTimer=null,spinTimer=null,debounced=false;
-let glbSampleSkins=[];
+let glbSampleSkins=[],decalEditor=null;
 function updateNativePaint(){
  if(!rootModel)return;
  const paints=rootModel.userData?.paintMaterials||[];
@@ -56,11 +57,19 @@ function setModel(group,source,meta=null,textureDictionary=new Map()){
  rootModel=group;roots.add(rootModel);kind=source;nativeMeta=meta;textureMap=textureDictionary;
  renderer.localClippingEnabled=(source==='GLB · podgląd kolorów');
  partMeshes=[];startState.clear();group.traverse(o=>{if(selectable(o)){partMeshes.push(o);startState.set(o.uuid,originalOf(o))}});
+ decalEditor=(source==='DFF + TXD')?createDecalEditor(textureDictionary,{
+   preview:'decalAtlas',select:'decalSelect',scale:'decalScale',
+   rotation:'decalRotation',reset:'decalReset',help:'decalHelp'
+ }):null;
+ $('decalControls').hidden=!decalEditor;
+ if(decalEditor)decalEditor.updateMaterials(group);
+ else $('decalHelp').textContent='Wczytaj Sultan LSPD DFF i TXD z atlasem mrplspddoors512. Wtedy będziesz przesuwać LS, herby i PD niezależnie od drzwi.';
+
  const totalV=partMeshes.reduce((n,x)=>n+x.geometry.attributes.position.count,0);
  const totalF=partMeshes.reduce((n,x)=>n+(x.geometry.index?x.geometry.index.count/3:x.geometry.attributes.position.count/3),0);
  const materialSet=new Set();partMeshes.forEach(mesh=>(Array.isArray(mesh.material)?mesh.material:[mesh.material]).forEach(m=>materialSet.add(m.uuid)));
  $('verts').textContent=totalV.toLocaleString('pl-PL');$('tris').textContent=Math.round(totalF).toLocaleString('pl-PL');$('mats').textContent=materialSet.size.toLocaleString('pl-PL');$('partsCount').textContent=partMeshes.length;
- $('saveNative').disabled=!(source==='DFF + TXD' && uploadedDFF && uploadedTXD.length);
+ $('saveNative').disabled=false;
  $('sourceKind').textContent=source;$('rwFormat').textContent=meta?'RenderWare 0x'+meta.version.toString(16).toUpperCase():'glTF / GLB';
  $('materialCount').textContent=materialSet.size;$('fileType').textContent=source==='DFF + TXD'?'NATYWNY':'GLB';
  if(meta){
@@ -279,7 +288,10 @@ $('loadSample').onclick=loadSample;$('retry').onclick=()=>uploadedDFF?loadNative
 $('saveNative').onclick=async()=>{
  const button=$('saveNative'),label=$('nativeSaveStatus');
  if(kind!=='DFF + TXD'||!uploadedDFF||!uploadedTXD.length){
-   label.textContent='Wczytaj prawdziwy model DFF i co najmniej jedno TXD.';return;
+   label.textContent=kind.startsWith('GLB')?
+     'Podgląd GLB nie zawiera źródłowych plików RenderWare. Wczytaj DFF i TXD po lewej; sam GLB nie może stać się prawdziwym DFF przez zapis.':
+     'Dodaj oba pliki: bazowy DFF i TXD. Bez nich nie da się wygenerować kompletnego modelu.';
+   message(label.textContent);return;
  }
  button.disabled=true;label.textContent='Zapisuję zmodyfikowane ramki DFF i dołączam tekstury TXD…';
  try{
@@ -287,13 +299,14 @@ $('saveNative').onclick=async()=>{
    const txds=await Promise.all(uploadedTXD.map(async f=>({name:f.name,data:await f.arrayBuffer()})));
    const {zip,report}=makeNativeZIP({
       dff,txds,parts:partMeshes,initialStates:startState,
-      paint:$('nativePaint').value,dffName:uploadedDFF.name
+      paint:$('nativePaint').value,dffName:uploadedDFF.name,
+      doorAtlas:decalEditor
    });
    download(zip,'mrp-model-gotowy-dff-txd.zip','application/zip');
-   label.textContent='Gotowe! Zapisano '+report.changedFrames+' zmodyfikowanych ramek DFF; dołączono '+txds.length+' TXD. Instalację w MTA sprawdź przed użyciem na serwerze.';
+   label.textContent='Gotowe: DFF (zmienione ramki: '+report.changedFrames+'), TXD: '+(report.editedTXD?'wypalone nowe oznaczenia':'bez zmian')+'. Sprawdź paczkę w MTA:SA przed wdrożeniem.';
    message('Pobrano model DFF + TXD');
  }catch(e){console.error('Native DFF export error:',e);label.textContent='Eksport nieudany: '+(e.message||e);message('Błąd eksportu: '+(e.message||e))}
- finally{button.disabled=!(kind==='DFF + TXD'&&uploadedDFF&&uploadedTXD.length)}
+ finally{button.disabled=false}
 };
 $('savePNG').onclick=()=>{renderer.render(scene,camera);renderer.domElement.toBlob(b=>b&&download(b,'mrp-model-view.png','image/png'))};
 $('saveJSON').onclick=()=>{const elements=partMeshes.map(m=>({name:m.name,originalName:m.userData.originalName||null,position:m.position.toArray(),quaternion:m.quaternion.toArray(),scale:m.scale.toArray(),visible:m.visible}));download(JSON.stringify({format:'MRP-Viewer-Transforms-v1',source:kind,info:'Transformations for viewer preview, not an edited DFF',elements},null,2),'mrp-viewer-transformations.json','application/json')};
