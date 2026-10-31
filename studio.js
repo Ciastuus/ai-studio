@@ -27,7 +27,7 @@ function mat(color,metalness=0,roughness=.82){return new THREE.MeshStandardMater
 const M={body:mat(dark,.08,.79),doors:mat(white,0,.8),trim:mat('#11171c',0,.9),glass:new THREE.MeshStandardMaterial({color:0x394957,opacity:.7,transparent:true,roughness:.19,metalness:0,side:THREE.DoubleSide}),wheel:mat('#7f858b',.32,.5),tire:mat('#24272b',.08,.93),light:mat('#c6c9cc',.08,.76),plate:mat('#d4d8db',.05,.8)};
 function ends(n){const m=n.match(/_(\d+)$/);return m?Number(m[1]):-1}
 function materialsFor(obj){const n=obj.name.toLowerCase();const idx=ends(n);
-  if(n.startsWith('lspd_door_')){obj.material=M.doors;obj.renderOrder=2;doorMeshes.push(obj);return}
+  if(n.startsWith('lspd_door_')){obj.visible=true;obj.material=M.doors;obj.renderOrder=5;doorMeshes.push(obj);return}
   if(n.startsWith('lspd_lightbar')||n.startsWith('lspd_bar_')||n.startsWith('lspd_hood')||n.startsWith('lspd_trunk')){obj.visible=false;return}
   if(n.startsWith('wheel_23_0')){obj.material=M.tire;return}
   if(n.startsWith('wheel_23_1')){obj.material=M.wheel;return}
@@ -102,6 +102,7 @@ for(const b of document.querySelectorAll('[data-camera]'))b.onclick=()=>{const x
 $('paint').oninput=e=>M.body.color.set(e.target.value);
 $('doorpaint').oninput=e=>M.doors.color.set(e.target.value);
 $('grid').onchange=e=>grid.visible=e.target.checked;
+$('resetColors').onclick=()=>{M.body.color.set(dark);M.doors.color.set(white);$('paint').value=dark;$('doorpaint').value=white;try{const local=localStorage.getItem('mrp-lspd-studio-v2');if(local){const saved=JSON.parse(local);saved.paint=dark;saved.doorpaint=white;localStorage.setItem('mrp-lspd-studio-v2',JSON.stringify(saved))}}catch(e){console.warn(e)}};
 $('editMode').onclick=()=>{editing=true;decals.visible=true;$('editMode').classList.add('on');$('previewMode').classList.remove('on')};
 $('previewMode').onclick=()=>{editing=false;decals.visible=false;$('previewMode').classList.add('on');$('editMode').classList.remove('on')};
 function snapshot(){const elements={};for(const [id,n] of nodes){elements[id]={x:n.position.x,y:n.position.y,z:n.position.z,scale:n.scale.x,rotation:THREE.MathUtils.radToDeg(n.userData.angle||0)}}return {format:'MRP-LSPD-3D-V2',model:'sultan_lspd_v10.glb',elements,paint:$('paint').value,doorpaint:$('doorpaint').value}}
@@ -124,7 +125,8 @@ loader.load('./assets/sultan_lspd_v10.glb',g=>{
   car.add(g.scene);let count=0,painted=0,doored=0;
   g.scene.traverse(o=>{if(!o.isMesh)return;count++;materialsFor(o)});painted=paintMeshes.length;doored=doorMeshes.length;
   loading.hidden=true;loaded=true;window.__MRP_READY=true;clearTimeout(timeout);status.textContent=`Model załadowany · ${count} siatek`; $('meshInfo').textContent=`${count} części · lakier ${painted} · drzwi ${doored}`;
-  try{const local=localStorage.getItem('mrp-lspd-studio-v2');if(local)apply(JSON.parse(local))}catch(e){console.warn(e)}
+  try{const local=localStorage.getItem('mrp-lspd-studio-v2');if(local){const saved=JSON.parse(local);delete saved.paint;delete saved.doorpaint;apply(saved)}}catch(e){console.warn(e)}
+  M.body.color.set(dark);M.doors.color.set(white);$('paint').value=dark;$('doorpaint').value=white;
 },progress=>{if(progress.lengthComputable)loadingInfo.textContent=`Pobrano ${Math.round(progress.loaded/progress.total*100)}% modelu`;else loadingInfo.textContent='Pobieranie modelu 3D…'},err=>{clearTimeout(timeout);loadingInfo.textContent='Nie udało się pobrać modelu 3D: '+(err?.message||err);status.textContent='Błąd ładowania';$('retry').hidden=false;console.error(err)});
 function frame(){requestAnimationFrame(frame);orbit.update();renderer.render(scene,camera)}frame();
 window.addEventListener('error',e=>{if(!loaded){loadingInfo.textContent=`Błąd JavaScript: ${e.message}`;$('retry').hidden=false}});
