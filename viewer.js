@@ -126,10 +126,86 @@ renderer.domElement.addEventListener('pointerdown',e=>{
  if(hit.length){choose(hit[0].object);document.querySelector('[data-tab="view"]').click()}
 });
 function frame(){requestAnimationFrame(frame);orbit.update();renderer.render(scene,camera)}frame();
+
+/**
+ * Preview-only repair for the legacy GLB sample. It is NOT applied to imported
+ * DFF/TXD files: native models keep the exact RenderWare materials and geometry.
+ * The legacy GLB includes bad rim geometry and severely tinted remap materials.
+ */
+function normalizeLegacySultanSample(group){
+  const black=new THREE.MeshStandardMaterial({name:'LSPD · nadwozie (podgląd)',color:0x161b20,roughness:.77,metalness:.08,side:THREE.DoubleSide});
+  const white=new THREE.MeshStandardMaterial({name:'LSPD · drzwi (podgląd)',color:0xe8e5dd,roughness:.85,metalness:0,side:THREE.DoubleSide});
+  const blackTrim=new THREE.MeshStandardMaterial({color:0x181c21,roughness:.96,side:THREE.DoubleSide});
+  const glass=new THREE.MeshStandardMaterial({color:0x28333c,roughness:.18,opacity:.88,transparent:true,side:THREE.DoubleSide});
+  const chrome=new THREE.MeshStandardMaterial({color:0xa9afb3,roughness:.42,metalness:.45,side:THREE.DoubleSide});
+  const room=new THREE.MeshStandardMaterial({color:0x30343c,roughness:.94,side:THREE.DoubleSide});
+  for(const material of [black,white,blackTrim,glass,chrome,room])material.vertexColors=false;
+  const paintParts=/^(bonnet_ok_1_0|boot_ok_3_0|chassis_19_(5|6|7|8|9)|sultan_roof|bump_front_ok_9_(0|1)|bump_rear_ok_11_0)/;
+  const originalBodyDoors=/^(door_(lf|rf|lr|rr)_ok_)/;
+  group.traverse(o=>{
+    if(!o.isMesh)return;
+    const n=o.name.toLowerCase();
+    if(n.startsWith('wheel_')){o.visible=false;return;}
+    if(n.startsWith('lspd_door_')){
+      o.material=white;
+      // Original converted police panels were buried within the exterior door.
+      // Displace only the GLB example so both sides become visibly white.
+      o.position.x += /lspd_door_l/.test(n)?-.185:.185;
+      o.renderOrder=3;
+      return;
+    }
+    if(n.startsWith('lspd_hood')||n.startsWith('lspd_trunk')){o.visible=false;return;}
+    if(paintParts.test(n)){o.material=black;return}
+    if(n.includes('windscreen')){o.material=glass;return}
+    if(originalBodyDoors.test(n)){
+       const bits=n.split('_'),part=Number(bits[bits.length-1]);
+       if([2,4].includes(part)&&/door_(lf|rf)_ok/.test(n)){o.material=white;return}
+       if([0,1,3].includes(part)&&/door_(lr|rr)_ok/.test(n)){o.material=white;return}
+       o.material=blackTrim;return;
+    }
+    if(/^(chassis_19_(0|1|2|3|4|10|11|12|13)|bump_front_ok_9_(2|3))/.test(n)){
+      // Preserve existing GTASA TXD textures where available, tint only missing assets.
+      const m=o.material;
+      if(m?.map&&m.map.image)return;
+      o.material=/chassis_19_(0|1|2|3|4)/.test(n)?room:chrome;
+    }
+    // Remove toxic baked vertex color multipliers from remaining GLB surfaces.
+    const materials=Array.isArray(o.material)?o.material:[o.material];
+    if(materials.some(m=>m?.vertexColors)){
+      o.material=materials.map(m=>{const c=m.clone();c.vertexColors=false;return c});
+      if(!Array.isArray(o.material)&&materials.length===1)o.material=o.material[0];
+    }
+  });
+  // Restore visible tyre + alloy silhouette independently of broken GLB wheel mesh.
+  // Wheels belong to the *preview only*: actual DFF import retains original wheels.
+  const tyres=new THREE.MeshStandardMaterial({name:'LSPD · opony',color:0x16191c,roughness:1,side:THREE.DoubleSide});
+  const rims=new THREE.MeshStandardMaterial({name:'LSPD · felgi',color:0x8e969e,metalness:.65,roughness:.42,side:THREE.DoubleSide});
+  const hub=new THREE.MeshStandardMaterial({color:0x4a5258,metalness:.5,roughness:.48});
+  const circum=32;
+  for(const x of [-.965,.965])for(const z of [-1.554,1.446]){
+    const assembly=new THREE.Group();assembly.name='Koło podglądowe '+(x<0?'lewe':'prawe')+' '+(z<0?'przód':'tył');
+    assembly.position.set(x,-.254,z);
+    const tire=new THREE.Mesh(new THREE.CylinderGeometry(.339,.339,.19,circum,1),tyres);
+    tire.rotation.z=Math.PI/2;assembly.add(tire);
+    for(const dir of [-1,1]){
+      const face=new THREE.Group();face.position.x=dir*.098;face.rotation.y=dir*Math.PI/2;
+      const rim=new THREE.Mesh(new THREE.CylinderGeometry(.245,.245,.02,32),rims);rim.rotation.x=Math.PI/2;face.add(rim);
+      const darkCenter=new THREE.Mesh(new THREE.CircleGeometry(.17,32),hub);darkCenter.position.z=.014;face.add(darkCenter);
+      for(let spoke=0;spoke<5;spoke++){
+        const bar=new THREE.Mesh(new THREE.BoxGeometry(.052,.24,.025),rims);
+        bar.position.set(Math.sin(spoke*2*Math.PI/5)*.115,Math.cos(spoke*2*Math.PI/5)*.115,.035);
+        bar.rotation.z=-spoke*2*Math.PI/5;
+        face.add(bar);
+      }
+      assembly.add(face);
+    }
+    group.add(assembly);
+  }
+}
 async function loadSample(){
  busy('Wczytywanie Sultana GLB','Model przykładowy z wcześniejszego edytora M-RP. Aby zobaczyć DFF/TXD, wybierz pliki.');
  try{
-  const g=await new GLTFLoader().loadAsync('./assets/sultan_lspd_v10.glb');setModel(g.scene,'GLB (przykład)');
+  const g=await new GLTFLoader().loadAsync('./assets/sultan_lspd_v10.glb');normalizeLegacySultanSample(g.scene);setModel(g.scene,'GLB · podgląd kolorów');
   $('dffName').textContent='sultan_lspd_v10.glb';$('dffSize').textContent='Przykład';
  }catch(e){fail(e)}
 }
