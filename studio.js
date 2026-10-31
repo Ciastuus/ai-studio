@@ -24,7 +24,7 @@ let loaded=false, editing=true, selected='lsL';
 const dark='#242930',white='#efeee8';
 const paintMeshes=[],doorMeshes=[],whiteSurfaces=[];
 function mat(color,metalness=0,roughness=.82){return new THREE.MeshStandardMaterial({color,metalness,roughness,side:THREE.DoubleSide})}
-const M={body:new THREE.MeshBasicMaterial({color:dark,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false}),doors:new THREE.MeshBasicMaterial({color:white,side:THREE.DoubleSide,depthTest:true,depthWrite:true,toneMapped:false}),whiteShield:new THREE.MeshBasicMaterial({color:white,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false}),trim:mat('#11171c',0,.9),glass:new THREE.MeshStandardMaterial({color:0x394957,opacity:.7,transparent:true,roughness:.19,metalness:0,side:THREE.DoubleSide}),wheel:mat('#7f858b',.32,.5),tire:mat('#24272b',.08,.93),light:mat('#c6c9cc',.08,.76),plate:mat('#d4d8db',.05,.8)};
+const M={body:new THREE.MeshBasicMaterial({color:dark,side:THREE.DoubleSide,depthTest:true,depthWrite:true,toneMapped:false}),doors:new THREE.MeshBasicMaterial({color:white,side:THREE.DoubleSide,depthTest:true,depthWrite:true,toneMapped:false}),whiteShield:new THREE.MeshBasicMaterial({color:white,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false}),trim:mat('#11171c',0,.9),glass:new THREE.MeshStandardMaterial({color:0x394957,opacity:.7,transparent:true,roughness:.19,metalness:0,side:THREE.DoubleSide}),wheel:mat('#7f858b',.32,.5),tire:mat('#24272b',.08,.93),light:mat('#c6c9cc',.08,.76),plate:mat('#d4d8db',.05,.8)};
 function ends(n){const m=n.match(/_(\d+)$/);return m?Number(m[1]):-1}
 function materialsFor(obj){const n=obj.name.toLowerCase();const idx=ends(n);
   if(n.startsWith('lspd_door_')){
@@ -39,7 +39,7 @@ function materialsFor(obj){const n=obj.name.toLowerCase();const idx=ends(n);
     const left=n.startsWith('lspd_door_l');
     const protective=new THREE.Mesh(geo,M.whiteShield);
     protective.name='WHITE_LSPD_PANEL_'+n;
-    protective.position.x=left?-.035:.035;
+    protective.position.x=left?-.185:.185;
     protective.renderOrder=60;
     protective.frustumCulled=false;
     obj.add(protective);whiteSurfaces.push({mesh:protective,side:left?'L':'R'});
@@ -62,10 +62,10 @@ function materialsFor(obj){const n=obj.name.toLowerCase();const idx=ends(n);
   if(n.startsWith('plate_rear_ok')){obj.material=M.plate;return}
   // Use body paint only where the original mesh represents the outer shell.
   if(n.startsWith('bonnet_ok_1_0')||n.startsWith('boot_ok_3_0')||n.startsWith('sultan_roof')||n.startsWith('chassis_19_5')||n.startsWith('chassis_19_6')||n.startsWith('chassis_19_7')||n.startsWith('chassis_19_9')){
-    obj.material=M.body;obj.renderOrder=30;paintMeshes.push(obj);return;
+    obj.material=M.body;obj.renderOrder=0;paintMeshes.push(obj);return;
   }
-  if(n.startsWith('bump_front_ok_9_0')||n.startsWith('bump_rear_ok_11_0')){obj.material=M.body;obj.renderOrder=30;paintMeshes.push(obj);return}
-  if(n.startsWith('bump_front_ok_9_1')){obj.material=M.body;obj.renderOrder=30;paintMeshes.push(obj);return}
+  if(n.startsWith('bump_front_ok_9_0')||n.startsWith('bump_rear_ok_11_0')){obj.material=M.body;obj.renderOrder=0;paintMeshes.push(obj);return}
+  if(n.startsWith('bump_front_ok_9_1')){obj.material=M.body;obj.renderOrder=0;paintMeshes.push(obj);return}
   // Keep original GTA textures on interior, fixtures and trim.
 }
 function canvasText(label){const cv=document.createElement('canvas');cv.width=512;cv.height=256;const c=cv.getContext('2d');
@@ -80,12 +80,12 @@ function seal(){const cv=document.createElement('canvas');cv.width=cv.height=512
   const t=new THREE.CanvasTexture(cv);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;}
 const labelTex={ls:canvasText('LS'),pd:canvasText('PD'),badge:seal(),police:canvasText('POLICE')};
 const config=[
-  ['lsL','LS · kierowca',[-1.123,-.06,-.40],[.42,.29],'ls',-Math.PI/2],
-  ['badgeL','Herb · kierowca',[-1.123,-.06,.02],[.29,.29],'badge',-Math.PI/2],
-  ['pdL','PD · kierowca',[-1.123,-.06,.56],[.47,.30],'pd',-Math.PI/2],
-  ['lsR','LS · pasażer',[1.123,-.06,-.40],[.42,.29],'ls',Math.PI/2],
-  ['badgeR','Herb · pasażer',[1.123,-.06,.02],[.29,.29],'badge',Math.PI/2],
-  ['pdR','PD · pasażer',[1.123,-.06,.56],[.47,.30],'pd',Math.PI/2],
+  ['lsL','LS · kierowca',[-1.257,-.06,-.40],[.42,.29],'ls',-Math.PI/2],
+  ['badgeL','Herb · kierowca',[-1.257,-.06,.02],[.29,.29],'badge',-Math.PI/2],
+  ['pdL','PD · kierowca',[-1.257,-.06,.56],[.47,.30],'pd',-Math.PI/2],
+  ['lsR','LS · pasażer',[1.257,-.06,-.40],[.42,.29],'ls',Math.PI/2],
+  ['badgeR','Herb · pasażer',[1.257,-.06,.02],[.29,.29],'badge',Math.PI/2],
+  ['pdR','PD · pasażer',[1.257,-.06,.56],[.47,.30],'pd',Math.PI/2],
   ['policeH','POLICE · maska',[0,.43,-1.80],[.7,.20],'police',0],
   ['policeT','POLICE · bagażnik',[0,.42,1.94],[.68,.19],'police',0],
   ['bar','Belka świetlna',[0,.73,-.05],[.9,.20],null,0]
