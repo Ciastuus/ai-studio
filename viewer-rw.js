@@ -19,7 +19,7 @@ export function getRWInfo(buffer){
     const o=frameStruct.data+4+i*56;
     const rot=Array.from({length:9},(_,j)=>f(o+4*j)),pos=[f(o+36),f(o+40),f(o+44)],parent=si(o+48);
     const m=new THREE.Matrix4().set(rot[0],rot[3],rot[6],pos[0],rot[1],rot[4],rot[7],pos[1],rot[2],rot[5],rot[8],pos[2],0,0,0,1);
-    frames.push({name:'frame_'+i,m,parent});
+    frames.push({name:'frame_'+i,m,parent,rwOffset:o});
   }
   const exts=frameChildren.filter(c=>c.type===3);
   for(let i=0;i<Math.min(exts.length,count);i++){
