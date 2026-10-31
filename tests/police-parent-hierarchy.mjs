@@ -35,7 +35,7 @@ function makeFixture(){
 const source=makeFixture(),data=getRWInfo(source),ids=new Map(data.frames.map((f,i)=>[f.name,i]));
 function world(info,i,cache=new Map()){
  if(cache.has(i))return cache.get(i);
- const f=info.frames[i],w=f.parent<0?f.m.clone():world(info,f.parent,cache).multiply(f.m);
+ const f=info.frames[i],w=f.parent<0?f.m.clone():world(info,f.parent,cache).clone().multiply(f.m);
  cache.set(i,w);return w;
 }
 function eq(a,b,label){
