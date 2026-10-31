@@ -39,6 +39,32 @@ export function getRWInfo(buffer){
   return {frames,atomics,geometries:geoms.length,version:v.getUint32(8,true),bytes:n};
 }
 
+/**
+ * GTA:SA replaces green "remap" materials with vehicle paint at runtime.
+ * The source DFF intentionally stores RGB (60,255,0); this is NOT lime paint.
+ */
+export function isVehicleRemapMaterial(mat){
+ const c=mat?.color;
+ return !!c && c.g>.90 && c.r>.12 && c.r<.40 && c.b<.12;
+}
+export function normalizeVehicleMaterials(mesh,paint='#242930'){
+ const materials=Array.isArray(mesh.material)?mesh.material:[mesh.material];
+ let changed=0;
+ for(const material of materials){
+  if(!isVehicleRemapMaterial(material))continue;
+  material.color.set(paint);
+  material.name='GTA:SA · lakier pojazdu (remap)';
+  material.userData={...material.userData,vehiclePaint:true};
+  material.roughness=.78;
+  material.metalness=.05;
+  material.needsUpdate=true;changed++;
+ }
+ return changed;
+}
+export function isReducedOrDamagedVehiclePart(name){
+ return /(?:^|_)(?:vlo|low|lod|dam)(?:_|$)/i.test(name);
+}
+
 export function nativeGroup(buffer, textureBuffers=[]){
   const dict=new Map(),txdDetails=[];
   for(const entry of textureBuffers){
@@ -66,21 +92,37 @@ export function nativeGroup(buffer, textureBuffers=[]){
     resolving.delete(i);matrices[i]=m;return m;
   }
   const result=new THREE.Group();result.name='DFF · RenderWare';
-  let used=0;
+  let used=0,remapped=0,hiddenLOD=0,wheelInstances=0;
   for(const a of metadata.atomics){
     const base=parts[a.geom],frame=metadata.frames[a.frame];
     if(!base||!frame)continue;
-    const mesh=new THREE.Mesh(base.geometry.clone(),Array.isArray(base.material)?base.material.map(x=>x.clone()):base.material.clone());
-    mesh.name=frame.name+' ['+a.geom+']';mesh.userData={atomicIndex:a.index,geometryIndex:a.geom,frameIndex:a.frame,originalName:frame.name};
-    mesh.matrixAutoUpdate=false;
-    mesh.matrix.copy(convert).multiply(frameMatrix(a.frame));
-    mesh.matrixWorldNeedsUpdate=true;
-    // Damage models remain available in the parts list but are hidden by default.
-    if(/(_dam|_low|_lod)(_|$)/i.test(frame.name))mesh.visible=false;
-    mesh.traverse(x=>{if(x.isMesh&&x.material){const mats=Array.isArray(x.material)?x.material:[x.material];for(const mat of mats){mat.side=THREE.DoubleSide; if(mat.map)mat.map.colorSpace=THREE.SRGBColorSpace;}}});
-    result.add(mesh);used++;
+    const wheel=frame.name.toLowerCase()==='wheel';
+    // GTA:SA stores ONE wheel geometry and positions 4 copies at wheel_*_dummy.
+    const targetFrames=wheel
+      ?metadata.frames.map((f,i)=>({frame:f,index:i})).filter(o=>/^wheel_(?:lf|rf|lb|rb)_dummy$/i.test(o.frame.name))
+      :[{frame,index:a.frame}];
+    for(const {frame:target,index} of targetFrames){
+      const materials=Array.isArray(base.material)?base.material.map(x=>x.clone()):base.material.clone();
+      const mesh=new THREE.Mesh(base.geometry.clone(),materials);
+      mesh.name=(wheel?target.name:frame.name)+' ['+a.geom+']';
+      mesh.userData={atomicIndex:a.index,geometryIndex:a.geom,frameIndex:index,originalName:frame.name,isWheelInstance:wheel};
+      mesh.matrixAutoUpdate=false;
+      mesh.matrix.copy(convert).multiply(frameMatrix(index));
+      mesh.matrixWorldNeedsUpdate=true;
+      // Never show chassis_vlo over the full-detail chassis. Hide damage/LODs.
+      if(isReducedOrDamagedVehiclePart(frame.name)){mesh.visible=false;hiddenLOD++;}
+      remapped+=normalizeVehicleMaterials(mesh);
+      mesh.traverse(x=>{if(!x.isMesh||!x.material)return;
+        for(const mat of (Array.isArray(x.material)?x.material:[x.material])){
+          mat.side=THREE.DoubleSide;
+          if(mat.map)mat.map.colorSpace=THREE.SRGBColorSpace;
+        }});
+      result.add(mesh);used++;
+      if(wheel)wheelInstances++;
+    }
   }
   if(!used)throw Error('Nie znaleziono widocznych atomików DFF.');
-  // 0..1 green channel is not a GTA:SA environment shader. Renderer uses a neutral base.
-  return {group:result,materials:dict,meta:{...metadata,atomicCount:used,txdDetails}};
+  result.userData.paintMaterials=[];
+  result.traverse(x=>{if(x.isMesh)for(const m of Array.isArray(x.material)?x.material:[x.material])if(m?.userData?.vehiclePaint)result.userData.paintMaterials.push(m)});
+  return {group:result,materials:dict,meta:{...metadata,atomicCount:used,hiddenLOD,wheelInstances,remapped,txdDetails}};
 }
