@@ -25,6 +25,7 @@
  </section>
  <section class="panel parts-panel"><div class="heading">CZĘŚCI <span class="heading-actions"><button id="showAll">Wszystkie</button><button id="hideAll">Żadne</button></span></div>
   <input class="filter" id="partSearch" type="search" placeholder="Szukaj części, np. door, wheel">
+  <button class="block" id="toggleLightSquares" disabled style="font-size:11px;background:#483040;border-color:#7c4d68">Usuń 4 prostokąty LED z DFF</button>
   <div class="part-list" id="partList" role="list"><p class="smallnote">Wczytaj model, aby zobaczyć hierarchię.</p></div>
  </section>
  <section class="panel"><div class="heading">LAKIER GTA:SA</div>
@@ -54,13 +55,18 @@
   <div id="inspectEmpty" class="empty">Nie wybrano części.</div>
   <div id="inspectFields" hidden>
    <div class="selected-title" id="partTitle">—</div>
-   <label class="toggle"><span>Widoczność</span><input type="checkbox" id="partVisible" checked></label>
+   <label class="toggle"><span>Widoczność tylko w podglądzie</span><input type="checkbox" id="partVisible" checked></label>
+   <div class="button-row">
+    <button id="removePart" style="flex:1;background:#492c34;border-color:#8d454f">Usuń część z DFF</button>
+    <button id="restorePart" style="flex:1" hidden>Przywróć część</button>
+   </div>
+   <p class="smallnote" id="partRemovalInfo">Usunięcie części jest zapisywane w DFF podczas eksportu. Możesz cofnąć usunięcie przed eksportem.</p>
    <div class="heading smallheading">TRANSFORMACJA (PODGLĄD)</div>
    <label class="field">Pozycja X <input id="posX" type="number" step="0.01"></label><label class="field">Pozycja Y <input id="posY" type="number" step="0.01"></label><label class="field">Pozycja Z <input id="posZ" type="number" step="0.01"></label>
    <label class="field">Obrót Y (°) <input id="rotY" type="number" step="1"></label>
    <label class="field">Skala <input id="scale" type="number" min=".1" max="5" step=".05"></label>
    <div class="button-row"><button id="moveMode" class="active">Przesuń</button><button id="rotateMode">Obróć</button><button id="scaleMode">Skaluj</button></div><button id="resetPart" class="block secondary">Resetuj część</button>
-   <p class="smallnote">Transformacje części zapisują się do pliku JSON. Eksport natywnego DFF z dowolnymi transformacjami nie jest jeszcze obsługiwany.</p>
+   <p class="smallnote">Przesuwanie i obracanie części zapisuje się do DFF. Usunięcie części jest trwałe po eksporcie — zwykłe odznaczenie widoczności działa wyłącznie w podglądzie.</p>
   </div>
  </section>
  <section id="tab-model" class="tab-panel"><div class="heading">INFORMACJE RENDERWARE</div>
@@ -89,7 +95,7 @@
   <div class="heading smallheading">GOTOWY MODEL DO MTA:SA</div>
   <button id="saveNative" class="block primary" disabled>Eksportuj gotowy DFF + TXD (ZIP)</button>
   <p id="nativeSaveStatus" class="info" role="status">Wczytaj pliki .dff i .txd, ustaw części w podglądzie i wyeksportuj gotowy zestaw.</p>
-  <p class="smallnote">Zapisuje pozycje części w DFF i przesunięcia LS, herbów, PD w przebudowanym TXD. Ukrywanie części oraz kolor lakieru nie są zapisywane do plików. Lakier wymaga ustawienia przez Lua.</p>
+  <p class="smallnote">Zapisuje pozycje części w DFF i przesunięcia LS, herbów, PD w przebudowanym TXD. Użyj „Usuń część z DFF”, aby naprawdę usunąć geometrię. Zwykłe ukrywanie i kolor lakieru nie są zapisywane do plików. Lakier wymaga ustawienia przez Lua.</p>
   <p class="info">GLB i JSON służą do podglądu oraz przenoszenia ustawień. Opcja DFF + TXD zapisuje natywne pliki RenderWare.</p>
   <a class="export-link" href="./index.html">Otwórz edytor LSPD z eksportem DFF/TXD ↗</a>
   <p class="smallnote">Eksporter DFF/TXD w edytorze LSPD obsługuje konkretny model V10, nie dowolny DFF.</p>
@@ -97,5 +103,5 @@
 </aside>
 </div>
 <footer class="foot">M-RP / RENDERWARE VIEWER · nieoficjalny, własny interfejs inspirowany typowymi narzędziami do modeli GTA:SA · biblioteka DFF-Loader MIT</footer>
-<script type="module" src="./viewer.js?v=20261031-independent-decals"></script>
+<script type="module" src="./viewer.js?v=20261031-delete-atomics-1"></script>
 </body></html>
