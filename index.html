@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>M-RP · LSPD 3D Studio</title>
+<meta name="theme-color" content="#10151c" />
+<link rel="stylesheet" href="./style.css" />
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.161.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.161.0/examples/jsm/"}}</script>
+</head>
+<body>
+<header><div><div class="eyebrow">M-RP / MODEL STUDIO</div><h1>Sultan LSPD <span>3D Editor</span></h1><p>GTA:SA · Sultan 560 · model DFF V10 → GLB · podgląd edycyjny</p></div><span id="state" role="status">Uruchamianie…</span></header>
+<main>
+<section id="stage" aria-label="Interaktywny podgląd 3D Sultana">
+  <div class="stage-top"><div class="modes"><button class="mode on" id="editMode">Edycja 3D</button><button class="mode" id="previewMode">Podgląd bez znaczników</button></div><div class="badge"><span class="dot"></span><span id="meshInfo">Model 3D</span></div></div>
+  <div id="viewport"></div>
+  <div id="loading" class="loading"><div class="spinner"></div><strong>Wczytywanie modelu Sultana…</strong><small id="loadingInfo">Sprawdzanie biblioteki 3D</small><button id="retry" hidden>Ponów ładowanie</button></div>
+  <div class="stage-bottom"><span>Obrót: przeciągnij tło · zoom: dwa palce / kółko · element: dotknij lub wybierz z listy</span><button id="screenshot">Zapisz obraz PNG</button></div>
+</section>
+<aside>
+  <div class="group"><h2>Ustawienie kamery</h2><div class="buttons" id="cameras"><button data-camera="left">Kierowca</button><button data-camera="right">Pasażer</button><button data-camera="front">Przód</button><button data-camera="rear">Tył</button><button data-camera="top">Góra</button><button data-camera="angle" class="chosen">3D pod kątem</button></div></div>
+  <div class="group"><h2>Wybierz element</h2><div class="buttons" id="items"></div><p class="help">Każdy napis, herb i belka mają niezależną pozycję. Stronę pasażera można regulować osobno.</p></div>
+  <div class="group"><h2 id="selectedName">LS · kierowca</h2><div class="measure"><label for="x">X</label><input type="number" id="x" step="0.01"><label for="y">Wysokość</label><input type="number" id="y" step="0.01"><label for="z">Wzdłuż</label><input type="number" id="z" step="0.01"><label for="scale">Rozmiar</label><input type="number" id="scale" min="0.1" max="3" step="0.05"><label for="angle">Obrót (°)</label><input type="number" id="angle" step="1"></div><div class="nudge"><button data-nudge="left">←</button><button data-nudge="up">↑</button><button data-nudge="down">↓</button><button data-nudge="right">→</button></div><p class="help">Strzałki przesuwają zaznaczony element o 1 cm. Wartości są w metrach modelu.</p><button id="reset" class="wide">Przywróć wybrany element</button></div>
+  <div class="group"><h2>Wygląd</h2><label class="swatch"><span>Nadwozie</span><input id="paint" type="color" value="#14191c"></label><label class="swatch"><span>Drzwi</span><input id="doorpaint" type="color" value="#eeece4"></label><label class="swatch"><span>Pokaż siatkę pomocniczą</span><input id="grid" type="checkbox" checked></label><p class="help">Kolory służą do podglądu. Eksport pozycji nie zmienia plików DFF/TXD.</p></div>
+  <div class="group"><h2>Zapis ustawień</h2><button id="save" class="primary wide">Eksport JSON</button><button id="import" class="wide">Import JSON</button><input id="file" type="file" accept=".json,application/json" hidden><p class="help" id="savedNote">Możesz wrócić do zapisanych ustawień w tej przeglądarce.</p></div>
+</aside>
+</main>
+<footer>Wersja testowa · geometrię pobrano z modelu DFF V10; materiały są poprawiane w podglądzie i nie stanowią identycznego renderingu MTA:SA. Koła pozostają low-poly.</footer>
+<script>
+(function(){
+  function fail(message){if(window.__MRP_READY)return;const loading=document.getElementById('loading');const txt=document.getElementById('loadingInfo');const retry=document.getElementById('retry');if(loading)loading.hidden=false;if(txt)txt.textContent=message;if(retry)retry.hidden=false;}
+  window.addEventListener('error',function(e){if(e.message)fail('Błąd uruchamiania: '+e.message)});
+  window.addEventListener('unhandledrejection',function(e){fail('Błąd biblioteki 3D lub połączenia: '+(e.reason?.message||e.reason))});
+  setTimeout(function(){if(!window.__MRP_READY)fail('Model nie został wczytany. Sprawdź internet, bibliotekę Three.js oraz plik assets/sultan_lspd_v10.glb.')},25000);
+})();
+</script><script type="module" src="./studio.js"></script>
+</body></html>
