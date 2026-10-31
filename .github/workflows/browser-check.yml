@@ -1,0 +1,36 @@
+name: Browser render verification
+on:
+  push:
+    branches: [main]
+    paths:
+      - "index.html"
+      - "studio.js"
+      - "style.css"
+      - "assets/**"
+      - "tests/browser-color-check.cjs"
+      - ".github/workflows/browser-check.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  webgl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - run: npm install --no-save playwright@1.56.1
+      - name: Start local test server
+        run: |
+          python3 -m http.server 9000 --bind 127.0.0.1 > /tmp/studio-server.log 2>&1 &
+          sleep 3
+      - name: Verify real WebGL appearance and controls
+        run: node tests/browser-color-check.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sultan-webgl-visual-test
+          path: artifacts/
+          if-no-files-found: ignore
