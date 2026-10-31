@@ -133,10 +133,10 @@ function frame(){requestAnimationFrame(frame);orbit.update();renderer.render(sce
  * The legacy GLB includes bad rim geometry and severely tinted remap materials.
  */
 function normalizeLegacySultanSample(group){
-  const black=new THREE.MeshStandardMaterial({name:'LSPD · nadwozie (podgląd)',color:0x161b20,roughness:.77,metalness:.08,side:THREE.DoubleSide});
-  const white=new THREE.MeshStandardMaterial({name:'LSPD · drzwi (podgląd)',color:0xe8e5dd,roughness:.85,metalness:0,side:THREE.DoubleSide});
+  const black=new THREE.MeshStandardMaterial({name:'LSPD · nadwozie (podgląd)',color:0x2b3239,roughness:.77,metalness:.08,side:THREE.DoubleSide});
+  const white=new THREE.MeshBasicMaterial({name:'LSPD · białe drzwi (GLB)',color:0xf0eee8,side:THREE.DoubleSide,depthTest:false,depthWrite:false,toneMapped:false});
   const blackTrim=new THREE.MeshStandardMaterial({color:0x181c21,roughness:.96,side:THREE.DoubleSide});
-  const glass=new THREE.MeshStandardMaterial({color:0x28333c,roughness:.18,opacity:.88,transparent:true,side:THREE.DoubleSide});
+  const glass=new THREE.MeshStandardMaterial({color:0x5b6570,roughness:.18,opacity:.65,transparent:true,side:THREE.DoubleSide});
   const chrome=new THREE.MeshStandardMaterial({color:0xa9afb3,roughness:.42,metalness:.45,side:THREE.DoubleSide});
   const room=new THREE.MeshStandardMaterial({color:0x30343c,roughness:.94,side:THREE.DoubleSide});
   for(const material of [black,white,blackTrim,glass,chrome,room])material.vertexColors=false;
@@ -150,8 +150,9 @@ function normalizeLegacySultanSample(group){
       o.material=white;
       // Original converted police panels were buried within the exterior door.
       // Displace only the GLB example so both sides become visibly white.
-      o.position.x += /lspd_door_l/.test(n)?-.185:.185;
-      o.renderOrder=3;
+      o.position.x += /lspd_door_l/.test(n)?-.29:.29;
+      o.renderOrder=85;
+      o.frustumCulled=false;
       return;
     }
     if(n.startsWith('lspd_hood')||n.startsWith('lspd_trunk')){o.visible=false;return;}
