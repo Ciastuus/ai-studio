@@ -74,12 +74,16 @@
  <section id="tab-export" class="tab-panel"><div class="heading">EKSPORT / NARZĘDZIA</div>
   <button id="savePNG" class="block secondary">Zapisz obraz PNG</button><button id="saveGLB" class="block secondary">Wyeksportuj podgląd GLB</button>
   <button id="saveJSON" class="block secondary">Zapisz transformacje JSON</button>
-  <p class="info">GLB jest eksportem podglądu 3D, a JSON zachowuje zmiany w tej przeglądarce. Te pliki nie zastępują DFF/TXD.</p>
+  <div class="heading smallheading">GOTOWY MODEL DO MTA:SA</div>
+  <button id="saveNative" class="block primary" disabled>Eksportuj gotowy DFF + TXD (ZIP)</button>
+  <p id="nativeSaveStatus" class="info" role="status">Wczytaj pliki .dff i .txd, ustaw części w podglądzie i wyeksportuj gotowy zestaw.</p>
+  <p class="smallnote">Zapisuje pozycję, obrót i skalę części bezpośrednio w DFF, dołącza oryginalne TXD. Ukrywanie części i edycja kolorów w podglądzie nie zmieniają TXD. Lakier wymaga ustawienia przez Lua.</p>
+  <p class="info">GLB i JSON służą do podglądu oraz przenoszenia ustawień. Opcja DFF + TXD zapisuje natywne pliki RenderWare.</p>
   <a class="export-link" href="./index.html">Otwórz edytor LSPD z eksportem DFF/TXD ↗</a>
   <p class="smallnote">Eksporter DFF/TXD w edytorze LSPD obsługuje konkretny model V10, nie dowolny DFF.</p>
  </section>
 </aside>
 </div>
 <footer class="foot">M-RP / RENDERWARE VIEWER · nieoficjalny, własny interfejs inspirowany typowymi narzędziami do modeli GTA:SA · biblioteka DFF-Loader MIT</footer>
-<script type="module" src="./viewer.js?v=20261031-native-remap-wheel"></script>
+<script type="module" src="./viewer.js?v=20261031-native-binary-export"></script>
 </body></html>
